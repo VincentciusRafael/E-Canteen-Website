@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "334007429882",
+    "project_id": "e-canteen-dorv",
+    "storage_bucket": "e-canteen-dorv.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:334007429882:android:1a1e8a964142c05c693743",
+        "android_client_info": {
+          "package_name": "com.company.ecanteen"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB4Wid1DvZSNn1sOd2nMQAyeE8knyQJBns"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
