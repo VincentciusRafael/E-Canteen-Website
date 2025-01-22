@@ -138,6 +138,42 @@ $query = mysqli_query($conn, $sql);
     }
     </script>
     <style>
+        .sticky-header th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background-color: rgb(209 213 219);
+        }
+
+        /* Update styling scrollbar */
+        .overflow-y-auto {
+            scrollbar-width: thin; /* Untuk Firefox */
+            scrollbar-color: #888 #f1f1f1; /* Untuk Firefox */
+        }
+
+        .overflow-y-auto::-webkit-scrollbar {
+            width: 8px;
+            height: 8px; /* Untuk horizontal scrollbar */
+        }
+
+        .overflow-y-auto::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .overflow-y-auto::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Pastikan tabel memiliki ruang untuk scroll */
+        .card-body {
+            position: relative;
+        }
         .search-input {
             max-width: 250px;
         }
@@ -185,12 +221,12 @@ $query = mysqli_query($conn, $sql);
         </div>
 
         <!-- Main Content -->
-        <div class="w-5/6 flex flex-col overflow-hidden">
+        <div class="w-5/6 card shadow-md rounded-lg overflow-hidden">
             <div class="bg-blue-200 text-center text-xl font-bold text-black py-6 border-b-3 border-blue-400">
                 <h1 class="text-3xl font-bold text-gray-800">E-Canteen</h1> 
             </div>
 
-            <div class="flex-1 p-4">
+            <div class="flex-1 p-4 overflow-y-auto">
                 <div class="flex justify-between items-center py-3 mb-3">
                     <h1 class="text-2xl font-semibold">Kelola Penjual</h1>
                     <button onclick="toggleModal()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
@@ -207,9 +243,9 @@ $query = mysqli_query($conn, $sql);
                     </select>
                 </div>
 
-                <div class="card shadow-md rounded-lg overflow-hidden">
+                <div class="card shadow-md rounded-lg">
                     <div class="card-body p-4">
-                        <div class="overflow-x-auto">
+                        <div class="overflow-x-auto" style="max-height: calc(100vh - 250px);">
                             <table class="min-w-full table-auto border-collapse">
                                 <thead>
                                     <tr class="bg-gray-300 text-center">

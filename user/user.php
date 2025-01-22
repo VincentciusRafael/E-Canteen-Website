@@ -87,7 +87,7 @@ if (count($conditions) > 0) {
 
 // Konfigurasi Pagination
 $hal = isset($_GET['hal']) ? (int)$_GET['hal'] : 1;
-$batas = 8; // Jumlah data per halaman
+$batas = 5; // Jumlah data per halaman
 $mulai = ($hal - 1) * $batas;
 
 // Count total rows for pagination
@@ -117,6 +117,37 @@ function buildPaginationUrl($page) {
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Make table header sticky */
+        .sticky-header th {
+            position: sticky;
+            top: 0;
+            background-color: rgb(209 213 219);
+            z-index: 10;
+        }
+
+        /* Ensure minimum content width */
+        .table-container {
+            min-width: 1000px;
+        }
         .search-input {
             max-width: 250px;
         }
@@ -190,11 +221,11 @@ function buildPaginationUrl($page) {
                 </div>
 
                 <!-- User Table -->
-                <div class="card shadow-md rounded-lg overflow-hidden">
+                <div class="card shadow-md rounded-lg overflow-hidden h-[calc(100vh-250px)] overflow-y-auto custom-scrollbar">
                     <div class="card-body p-4">
                         <div class="overflow-x-auto">
                             <table class="min-w-full table-auto border-collapse">
-                                <thead>
+                                <thead class="sticky-header">
                                     <tr class="bg-gray-300 text-center">
                                         <th class="px-4 py-2 border border-gray-400">No</th>
                                         <th class="px-4 py-2 border border-gray-400">Nama User</th>
@@ -249,31 +280,44 @@ function buildPaginationUrl($page) {
                                 <?php
                                 // Tombol Previous 
                                 if ($hal > 1) {
+                                    echo "<a href='?hal=1' class='px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'>
+                                            First
+                                        </a>";
                                     echo "<a href='?hal=" . ($hal - 1) . "' class='px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'>
                                             <i class='fas fa-chevron-left'></i> Prev
                                         </a>";
                                 }
 
                                 // Nomor halaman
-                                // Calculate the range of page numbers to display
-                                $start_page = max(1, min($hal - 1, $total_halaman - 2));
-                                $end_page = min($start_page + 2, $total_halaman);
-                                
-                                // Adjust start_page if we're at the end of the range
-                                if ($end_page - $start_page < 2) {
-                                    $start_page = max(1, $end_page - 2);
+                                $jumlah_number = 5; // Jumlah button number yang akan ditampilkan
+                                $start_number = ($hal > $jumlah_number) ? $hal - floor($jumlah_number/2) : 1;
+                                $end_number = $start_number + $jumlah_number - 1;
+
+                                if ($end_number > $total_halaman) {
+                                    $end_number = $total_halaman;
+                                    $start_number = ($total_halaman - $jumlah_number + 1 < 1) ? 1 : $total_halaman - $jumlah_number + 1;
                                 }
 
-                                // Show pagination numbers
-                                for ($i = $start_page; $i <= $end_page; $i++) {
+                                if ($start_number > 1) {
+                                    echo "<span class='px-3 py-2 bg-gray-200 text-gray-700 rounded'>...</span>";
+                                }
+
+                                for ($i = $start_number; $i <= $end_number; $i++) {
                                     $activeClass = $i == $hal ? 'bg-blue-600 text-white' : 'bg-blue-200 text-gray-700 hover:bg-blue-500 hover:text-white';
                                     echo "<a href='?hal=$i' class='px-3 py-2 rounded $activeClass'>$i</a>";
                                 }
 
-                                // Tombol Next
+                                if ($end_number < $total_halaman) {
+                                    echo "<span class='px-3 py-2 bg-gray-200 text-gray-700 rounded'>...</span>";
+                                }
+
+                                // Tombol Next dan Last
                                 if ($hal < $total_halaman) {
                                     echo "<a href='?hal=" . ($hal + 1) . "' class='px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'>
                                             Next <i class='fas fa-chevron-right'></i>
+                                        </a>";
+                                    echo "<a href='?hal=$total_halaman' class='px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'>
+                                            Last
                                         </a>";
                                 }
                                 ?>

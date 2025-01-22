@@ -23,6 +23,39 @@ $total_halaman = ceil($total_data / $batas);
     <link rel="icon" href="../images/WhatsApp Image 2025-01-04 at 10.08.50_8e6a12dc.jpg">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Make table header sticky */
+        .sticky-header th {
+            position: sticky;
+            top: 0;
+            background-color: rgb(209 213 219);
+            z-index: 10;
+        }
+
+        /* Ensure minimum content width */
+        .table-container {
+            min-width: 1000px;
+        }
+    </style>
 </head>
 <body class="bg-gray-100">
     <div class="flex h-screen overflow-hidden">
@@ -89,9 +122,9 @@ $total_halaman = ceil($total_data / $batas);
                     </div>
 
                     <!-- Transactions Table -->
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full bg-white">
-                            <thead>
+                    <div class="overflow-x-auto  h-[calc(100vh-250px)] overflow-y-auto custom-scrollbar">
+                        <table class="min-w-full bg-white table-auto border-collapse">
+                            <thead class="sticky-header">
                                 <tr class="bg-gray-300 text-center">
                                     <th class="py-3 px-4 border border-gray-400">ID Transaksi</th>
                                     <th class="py-3 px-4 border border-gray-400">Tanggal</th>

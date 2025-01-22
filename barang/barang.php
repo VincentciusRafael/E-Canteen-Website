@@ -146,7 +146,7 @@ if (isset($_POST['edit'])) {
 
 // Tambahkan ini setelah konfigurasi pagination
 $hal = isset($_GET['hal']) ? (int)$_GET['hal'] : 1;
-$batas = 6;
+$batas = 5;
 $mulai = ($hal - 1) * $batas;
 
 // Tambahkan kode filter
@@ -225,11 +225,44 @@ $query = mysqli_query($conn, $base_query . " ORDER BY produk.id_produk DESC LIMI
             modal.classList.add('flex');
         }
     </script>
+    <!-- Update CSS untuk custom scrollbar -->
     <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Make table header sticky */
+        .sticky-header th {
+            position: sticky;
+            top: 0;
+            background-color: rgb(209 213 219);
+            z-index: 10;
+        }
+
+        /* Ensure minimum content width */
+        .table-container {
+            min-width: 1000px;
+        }
         .search-input {
             max-width: 250px;
         }
     </style>
+
 </head>
 <body class="bg-gray-100">
     <div class="flex h-screen overflow-hidden">
@@ -273,12 +306,12 @@ $query = mysqli_query($conn, $base_query . " ORDER BY produk.id_produk DESC LIMI
         </div>
 
         <!-- Main Content -->
-        <div class="flex-1 flex flex-col overflow-hidden">
+        <div class="w-5/6 flex flex-col overflow-hidden">
             <div class="bg-blue-200 text-center text-xl font-bold text-black py-6 border-b-3 border-blue-400">
                 <h1 class="text-3xl font-bold text-gray-800">E-Canteen</h1> 
             </div>
 
-            <div class="flex-1 p-4">
+            <div class="flex-1 p-4 overflow-y-auto">
                 <div class="flex justify-between items-center mb-6">
                     <h1 class="text-2xl font-bold">Kelola Produk</h1>
                     <button onclick="toggleModal()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
@@ -308,11 +341,11 @@ $query = mysqli_query($conn, $base_query . " ORDER BY produk.id_produk DESC LIMI
                     </select>
                 </div>
 
-                <div class="card shadow-md rounded-lg overflow-hidden">
+                <div class="card shadow-md rounded-lg overflow-hidden h-[calc(100vh-250px)] overflow-y-auto custom-scrollbar">
                     <div class="card-body p-4">
-                        <div class="overflow-x-auto">
+                        <div class="overflow-x-auto"  style="max-height: calc(100vh - 250px);">
                             <table class="min-w-full table-auto border-collapse">
-                                <thead>
+                                <thead class="sticky-header">
                                     <tr class="bg-gray-300 text-center">
                                         <th class="px-4 py-2 border border-gray-400">No</th>
                                         <th class="px-4 py-2 border border-gray-400">Nama Produk</th>
@@ -376,29 +409,44 @@ $query = mysqli_query($conn, $base_query . " ORDER BY produk.id_produk DESC LIMI
 
                                 // Tombol Previous 
                                 if ($hal > 1) {
-                                    echo "<a href='?" . buildQueryString($hal - 1) . "' class='px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'>
+                                    echo "<a href='?hal=1' class='px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'>
+                                            First
+                                        </a>";
+                                    echo "<a href='?hal=" . ($hal - 1) . "' class='px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'>
                                             <i class='fas fa-chevron-left'></i> Prev
                                         </a>";
                                 }
 
                                 // Nomor halaman
-                                $start_page = max(1, min($hal - 1, $total_halaman - 2));
-                                $end_page = min($start_page + 2, $total_halaman);
-                                
-                                if ($end_page - $start_page < 2) {
-                                    $start_page = max(1, $end_page - 2);
+                                $total_show = 5; // Jumlah kotak yang ditampilkan
+                                $start_range = max(1, min($hal - 2, $total_halaman - 4));
+                                $end_range = min($start_range + 4, $total_halaman);
+
+                                if ($start_range > 1) {
+                                    echo "<a href='?" . buildQueryString(1) . "' class='px-3 py-2 rounded bg-blue-200 text-gray-700 hover:bg-blue-500 hover:text-white'>1</a>";
+                                    if ($start_range > 2) {
+                                        echo "<span class='px-3 py-2'>...</span>";
+                                    }
                                 }
 
-                                for ($i = $start_page; $i <= $end_page; $i++) {
+                                for ($i = $start_range; $i <= $end_range; $i++) {
                                     $activeClass = $i == $hal ? 'bg-blue-600 text-white' : 'bg-blue-200 text-gray-700 hover:bg-blue-500 hover:text-white';
                                     echo "<a href='?" . buildQueryString($i) . "' class='px-3 py-2 rounded $activeClass'>$i</a>";
                                 }
 
-                                // Tombol Next
+                                if ($end_range < $total_halaman) {
+                                    if ($end_range < $total_halaman - 1) {
+                                        echo "<span class='px-3 py-2'>...</span>";
+                                    }
+                                    echo "<a href='?" . buildQueryString($total_halaman) . "' class='px-3 py-2 rounded bg-blue-200 text-gray-700 hover:bg-blue-500 hover:text-white'>$total_halaman</a>";
+                                }
+
+                                // Tombol Next dan Last
                                 if ($hal < $total_halaman) {
                                     echo "<a href='?" . buildQueryString($hal + 1) . "' class='px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'>
                                             Next <i class='fas fa-chevron-right'></i>
                                         </a>";
+                                    echo "<a href='?" . buildQueryString($total_halaman) . "' class='px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'>Last</a>";
                                 }
                                 ?>
                             </div>
@@ -406,7 +454,6 @@ $query = mysqli_query($conn, $base_query . " ORDER BY produk.id_produk DESC LIMI
                                 Total <?php echo $total_data; ?> produk
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>  
