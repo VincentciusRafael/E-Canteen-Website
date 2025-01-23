@@ -168,7 +168,7 @@ if (isset($_POST['edit'])) {
         <!-- Main Content -->
         <div class="flex-1 flex flex-col overflow-hidden">
             <div class="bg-blue-200 text-center text-xl font-bold text-black py-6 border-b-3 border-blue-400">
-                <h1 class="text-3xl font-bold text-gray-800">E-Canteen</h1> 
+                <h1 class="text-3xl font-bold text-gray-800">E-Kantin</h1> 
             </div>
 
             <div class="flex-1 p-4">

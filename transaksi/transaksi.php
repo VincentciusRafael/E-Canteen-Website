@@ -101,7 +101,7 @@ if(isset($_POST['withdraw'])) {
         <!-- Main Content -->
         <div class="w-5/6 flex flex-col">
             <div class="bg-blue-200 text-center text-xl font-bold text-black py-6 border-b-3 border-blue-400">
-                <h1 class="text-3xl font-bold text-gray-800">E-Canteen</h1>
+                <h1 class="text-3xl font-bold text-gray-800">E-Kantin</h1>
             </div>
 
             <div class="flex-1 p-8">
