@@ -258,6 +258,22 @@ $query = mysqli_query($conn, $base_query . " ORDER BY produk.id_produk DESC LIMI
         .table-container {
             min-width: 1000px;
         }
+
+        .seller-card {
+            transition: transform 0.3s ease;
+        }
+        .seller-card:hover {
+            transform: translateY(-5px);
+        }
+        .product-grid {
+            display: none;
+        }
+        .product-grid.active {
+            display: grid;
+        }
+        .seller-grid.hidden {
+            display: none;
+        }
         .search-input {
             max-width: 250px;
         }
@@ -311,153 +327,55 @@ $query = mysqli_query($conn, $base_query . " ORDER BY produk.id_produk DESC LIMI
                 <h1 class="text-3xl font-bold text-gray-800">E-Canteen</h1> 
             </div>
 
-            <div class="flex-1 p-4 overflow-y-auto">
+            <div class="flex-1 p-6 overflow-y-auto">
+                <!-- Header Section -->
                 <div class="flex justify-between items-center mb-6">
-                    <h1 class="text-2xl font-bold">Kelola Produk</h1>
+                    <h1 class="text-2xl font-bold" id="pageTitle">Pilih Penjual</h1>
                     <button onclick="toggleModal()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
                         Tambah Produk
                     </button>
                 </div>
 
-                <div class="mb-3">
-                    <input type="text" id="searchInput" class="search-input form-control p-2 border rounded w-full md:w-1/2" placeholder="Cari Produk...">
-                    <select id="sellerFilter" class="p-2 border rounded">
-                        <option value="">Cari Sesuai Nama Penjual</option>
-                        <?php
-                        $penjualQuery = mysqli_query($conn, "SELECT DISTINCT penjual.id_penjual, penjual.nama_penjual 
-                                                            FROM penjual 
-                                                            INNER JOIN produk ON penjual.id_penjual = produk.id_penjual 
-                                                            ORDER BY penjual.nama_penjual");
-                        while ($penjual = mysqli_fetch_assoc($penjualQuery)) {
-                            $selected = (isset($_GET['seller']) && $_GET['seller'] == $penjual['nama_penjual']) ? 'selected' : '';
-                            echo "<option value='{$penjual['nama_penjual']}' {$selected}>{$penjual['nama_penjual']}</option>";
-                        }
+                <!-- Back Button (Initially Hidden) -->
+                <button id="backButton" onclick="showSellerGrid()" class="hidden mb-6 text-blue-600 hover:text-blue-800 flex items-center">
+                    <i class="fas fa-chevron-left mr-2"></i> Kembali ke Daftar Penjual
+                </button>
+
+                <!-- Seller Grid -->
+                <div id="sellerGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <?php
+                    $seller_query = mysqli_query($conn, "SELECT DISTINCT p.id_penjual, pj.nama_penjual, 
+                        COUNT(p.id_produk) as total_products 
+                        FROM penjual pj 
+                        LEFT JOIN produk p ON pj.id_penjual = p.id_penjual 
+                        GROUP BY p.id_penjual, pj.nama_penjual");
+
+                    while ($seller = mysqli_fetch_assoc($seller_query)) {
                         ?>
-                    </select>
-                    <select id="priceFilter" class="p-2 border rounded ml-2">
-                        <option value="">Urutkan Berdasarkan Harga</option>
-                        <option value="asc">Harga Terendah ke Tertinggi</option>
-                        <option value="desc">Harga Tertinggi ke Terendah</option>
-                    </select>
-                </div>
-
-                <div class="card shadow-md rounded-lg overflow-hidden h-[calc(100vh-250px)] overflow-y-auto custom-scrollbar">
-                    <div class="card-body p-4">
-                        <div class="overflow-x-auto"  style="max-height: calc(100vh - 250px);">
-                            <table class="min-w-full table-auto border-collapse">
-                                <thead class="sticky-header">
-                                    <tr class="bg-gray-300 text-center">
-                                        <th class="px-4 py-2 border border-gray-400">No</th>
-                                        <th class="px-4 py-2 border border-gray-400">Nama Produk</th>
-                                        <th class="px-4 py-2 border border-gray-400">Nama Penjual</th>
-                                        <th class="px-4 py-2 border border-gray-400">Deskripsi Singkat</th>
-                                        <th class="px-4 py-2 border border-gray-400">Harga</th>
-                                        <th class="px-4 py-2 border border-gray-400">Stok</th>
-                                        <th class="px-4 py-2 border border-gray-400">Image</th>
-                                        <th class="px-4 py-2 border border-gray-400">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php
-                                    // Query dengan pagination
-                                    $query = mysqli_query($conn, "SELECT produk.*, penjual.nama_penjual FROM produk
-                                                            LEFT JOIN penjual ON produk.id_penjual = penjual.id_penjual 
-                                                            ORDER BY produk.id_produk DESC 
-                                                            LIMIT $mulai, $batas");
-                                    $no = $mulai + 1;
-                                    while ($row = mysqli_fetch_assoc($query)) {
-                                        echo "
-                                        <tr class='hover:bg-gray-100'>
-                                            <td class='px-4 py-2 text-center border border-gray-400'>{$no}</td>
-                                            <td class='px-4 py-2 border border-gray-400'>{$row['nama_produk']}</td>
-                                            <td class='px-4 py-2 border border-gray-400'>{$row['nama_penjual']}</td>
-                                            <td class='px-4 py-2 border border-gray-400'>{$row['deskripsi_produk']}</td>
-                                            <td class='px-4 py-2 border border-gray-400'>Rp " . number_format($row['harga'], 0, ',', '.') . "</td>
-                                            <td class='px-4 py-2 border border-gray-400'>{$row['stok']}</td>
-                                            <td class='px-4 py-2 text-center border border-gray-400'><img src='{$row['image']}' alt='Product Image' class='w-16 h-16 object-cover'></td>
-                                            <td class='px-4 py-2 text-center border border-gray-400'>
-                                                <button onclick=\"openEditModal(
-                                                    '{$row['id_produk']}', 
-                                                    '" . htmlspecialchars($row['nama_produk'], ENT_QUOTES) . "',
-                                                    '{$row['id_penjual']}', 
-                                                    '" . htmlspecialchars($row['deskripsi_produk'], ENT_QUOTES) . "', 
-                                                    '{$row['harga']}', 
-                                                    '{$row['stok']}',
-                                                    '{$row['image']}'
-                                                )\" class='bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600'>Edit</button>
-                                                <a href='#' onclick=\"openDeleteModal('{$row['id_produk']}')\" class='bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600'>Hapus</a>
-                                            </td>
-                                        </tr>
-                                        ";
-                                        $no++;
-                                    }
-                                    ?>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Pagination -->
-                        <div class="mt-6 flex justify-between items-center">
-                            <div class="pagination-container flex items-center space-x-2">
-                                <?php
-                                // Fungsi untuk membuat query string dengan parameter yang ada
-                                function buildQueryString($hal) {
-                                    $params = $_GET;
-                                    $params['hal'] = $hal;
-                                    return http_build_query($params);
-                                }
-
-                                // Tombol Previous 
-                                if ($hal > 1) {
-                                    echo "<a href='?hal=1' class='px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'>
-                                            First
-                                        </a>";
-                                    echo "<a href='?hal=" . ($hal - 1) . "' class='px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'>
-                                            <i class='fas fa-chevron-left'></i> Prev
-                                        </a>";
-                                }
-
-                                // Nomor halaman
-                                $total_show = 5; // Jumlah kotak yang ditampilkan
-                                $start_range = max(1, min($hal - 2, $total_halaman - 4));
-                                $end_range = min($start_range + 4, $total_halaman);
-
-                                if ($start_range > 1) {
-                                    echo "<a href='?" . buildQueryString(1) . "' class='px-3 py-2 rounded bg-blue-200 text-gray-700 hover:bg-blue-500 hover:text-white'>1</a>";
-                                    if ($start_range > 2) {
-                                        echo "<span class='px-3 py-2'>...</span>";
-                                    }
-                                }
-
-                                for ($i = $start_range; $i <= $end_range; $i++) {
-                                    $activeClass = $i == $hal ? 'bg-blue-600 text-white' : 'bg-blue-200 text-gray-700 hover:bg-blue-500 hover:text-white';
-                                    echo "<a href='?" . buildQueryString($i) . "' class='px-3 py-2 rounded $activeClass'>$i</a>";
-                                }
-
-                                if ($end_range < $total_halaman) {
-                                    if ($end_range < $total_halaman - 1) {
-                                        echo "<span class='px-3 py-2'>...</span>";
-                                    }
-                                    echo "<a href='?" . buildQueryString($total_halaman) . "' class='px-3 py-2 rounded bg-blue-200 text-gray-700 hover:bg-blue-500 hover:text-white'>$total_halaman</a>";
-                                }
-
-                                // Tombol Next dan Last
-                                if ($hal < $total_halaman) {
-                                    echo "<a href='?" . buildQueryString($hal + 1) . "' class='px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'>
-                                            Next <i class='fas fa-chevron-right'></i>
-                                        </a>";
-                                    echo "<a href='?" . buildQueryString($total_halaman) . "' class='px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'>Last</a>";
-                                }
-                                ?>
-                            </div>
-                            <div class="text-gray-600">
-                                Total <?php echo $total_data; ?> produk
+                        <div class="seller-card bg-white rounded-lg shadow-md overflow-hidden cursor-pointer" 
+                             onclick="showProducts('<?php echo $seller['id_penjual']; ?>', '<?php echo $seller['nama_penjual']; ?>')">
+                            <div class="p-6 text-center">
+                                <div class="w-32 h-32 mx-auto bg-gray-200 rounded-full flex items-center justify-center mb-4">
+                                    <i class="fas fa-store text-4xl text-gray-400"></i>
+                                </div>
+                                <h3 class="text-xl font-semibold text-gray-800"><?php echo $seller['nama_penjual']; ?></h3>
+                                <p class="text-gray-600 mt-2"><?php echo $seller['total_products']; ?> Produk</p>
                             </div>
                         </div>
-                    </div>
+                        <?php
+                    }
+                    ?>
                 </div>
-            </div>  
+
+                <!-- Product Grid (Initially Hidden) -->
+                <div id="productGrid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <?php
+                    // Products will be loaded dynamically via JavaScript
+                    ?>
+                </div>
+            </div>
         </div>
+    </div> 
 
             <!-- Modal untuk Tambah -->
             <div id="addProdukModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
@@ -512,73 +430,95 @@ $query = mysqli_query($conn, $base_query . " ORDER BY produk.id_produk DESC LIMI
             </div>
 
             <!-- Edit Produk Modal -->
-            <div id="editProdukModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-                <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
-                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Edit Produk</h2>
-                    <form method="POST" enctype="multipart/form-data">
-                        <input type="hidden" id="edit_id_produk" name="id_produk">
-                        <div class="mb-4">
-                            <label class="block text-gray-700 font-medium mb-2">
-                                Nama Produk
-                            </label>
-                            <input type="text" id="edit_nama_produk" name="nama_produk" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        </div>
-                        <div class="mb-4">
-                            <label class="block text-gray-700 font-medium mb-2">
-                                Nama Penjual
-                            </label>
-                            <select id="edit_id_penjual" name="id_penjual" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                                <?php
-                                $penjual_query = mysqli_query($conn, "SELECT id_penjual, nama_penjual FROM penjual");
-                                while ($penjual = mysqli_fetch_assoc($penjual_query)) {
-                                    $selected = ($penjual['id_penjual'] == $id_penjual) ? 'selected' : '';
-                                    echo "<option value='{$penjual['id_penjual']}' {$selected}>{$penjual['nama_penjual']}</option>";
-                                }
-                                ?>
-                            </select>
-                        </div>
-                        <div class="mb-4">
-                            <label class="block text-gray-700 font-medium mb-2">Deskripsi</label>
-                            <textarea id="edit_deskripsi_produk" name="deskripsi_produk" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required></textarea>
-                        </div>
-                        <div class="mb-4">
-                            <label class="block text-gray-700 font-medium mb-2">Harga</label>
-                            <input type="number" id="edit_harga" name="harga" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        </div>
-                        <div class="mb-4">
-                            <label class="block text-gray-700 font-medium mb-2">Stok</label>
-                            <input type="number" id="edit_stok" name="stok" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        </div>
-                        <div class="mb-4">
-                            <label for="image" class="block text-gray-700 font-medium mb-2">Edit Gambar</label>
+            <div id="editProdukModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4 overflow-y-auto">
+                <div class="relative bg-white rounded-lg shadow-lg w-full max-w-4xl mx-auto my-8">
+                    <div class="max-h-[90vh] overflow-y-auto p-6">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4 sticky top-0 bg-white">Edit Produk</h2>
+                        <form method="POST" enctype="multipart/form-data">
+                            <input type="hidden" id="edit_id_produk" name="id_produk">
                             
-                            <!-- Pratinjau Gambar Lama -->
-                            <div class="mb-2">
-                                <p class="text-sm text-gray-500">Gambar Saat Ini:</p>
-                                <img id="current-image" src="" alt="Gambar Lama" class="w-32 h-32 object-cover rounded border">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Kolom Kiri -->
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-gray-700 font-medium mb-2">
+                                            Nama Produk
+                                        </label>
+                                        <input type="text" id="edit_nama_produk" name="nama_produk" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-gray-700 font-medium mb-2">
+                                            Nama Penjual
+                                        </label>
+                                        <select id="edit_id_penjual" name="id_penjual" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                                            <?php
+                                            $penjual_query = mysqli_query($conn, "SELECT id_penjual, nama_penjual FROM penjual");
+                                            while ($penjual = mysqli_fetch_assoc($penjual_query)) {
+                                                $selected = ($penjual['id_penjual'] == $id_penjual) ? 'selected' : '';
+                                                echo "<option value='{$penjual['id_penjual']}' {$selected}>{$penjual['nama_penjual']}</option>";
+                                            }
+                                            ?>
+                                        </select>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-gray-700 font-medium mb-2">Deskripsi</label>
+                                        <textarea id="edit_deskripsi_produk" name="deskripsi_produk" rows="4" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required></textarea>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-gray-700 font-medium mb-2">Harga</label>
+                                        <input type="number" id="edit_harga" name="harga" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                                    </div>
+                                </div>
+
+                                <!-- Kolom Kanan -->
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-gray-700 font-medium mb-2">Stok</label>
+                                        <input type="number" id="edit_stok" name="stok" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-gray-700 font-medium mb-2">Edit Gambar</label>
+                                        
+                                        <!-- Preview Gambar Saat Ini -->
+                                        <div class="mb-4 p-4 border rounded-lg bg-gray-50">
+                                            <p class="text-sm text-gray-500 mb-2">Gambar Saat Ini:</p>
+                                            <img id="current-image" src="" alt="Gambar Lama" class="w-full h-48 object-contain rounded border bg-white">
+                                        </div>
+
+                                        <!-- Input File & Preview Gambar Baru -->
+                                        <div class="space-y-4">
+                                            <input 
+                                                type="file" 
+                                                name="image" 
+                                                id="edit_image" 
+                                                class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                                accept="image/*" 
+                                                onchange="previewNewImage(event)"
+                                            >
+
+                                            <div id="new-image-preview" class="hidden p-4 border rounded-lg bg-gray-50">
+                                                <p class="text-sm text-gray-500 mb-2">Gambar Baru:</p>
+                                                <img id="new-preview" src="#" alt="Pratinjau Gambar Baru" class="w-full h-48 object-contain rounded border bg-white">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
-                            <!-- Input File untuk Gambar Baru -->
-                            <input 
-                                type="file" 
-                                name="image" 
-                                id="edit_image" 
-                                class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                                accept="image/*" 
-                                onchange="previewNewImage(event)"
-                            >
-
-                            <!-- Pratinjau Gambar Baru -->
-                            <div id="new-image-preview" class="mt-4 hidden">
-                                <p class="text-sm text-gray-500">Gambar Baru:</p>
-                                <img id="new-preview" src="#" alt="Pratinjau Gambar Baru" class="w-32 h-32 object-cover rounded border">
+                            <div class="flex justify-end mt-6 space-x-4 sticky bottom-0 bg-white pt-4 border-t">
+                                <button type="button" onclick="toggleEditModal()" class="px-6 py-2.5 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
+                                    Batal
+                                </button>
+                                <button type="submit" name="edit" class="px-6 py-2.5 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors">
+                                    Update
+                                </button>
                             </div>
-                        </div>
-                        <div class="flex justify-end">
-                            <button type="button" onclick="toggleEditModal()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg mr-2">Batal</button>
-                            <button type="submit" name="edit" class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600">Update</button>
-                        </div>
-                    </form>
+                        </form>
+                    </div>
                 </div>
             </div>
 
@@ -812,6 +752,29 @@ $query = mysqli_query($conn, $base_query . " ORDER BY produk.id_produk DESC LIMI
                     newPreview.src = '#'; // Jika tidak ada gambar, kosongkan src
                     newImagePreviewContainer.classList.add('hidden'); // Sembunyikan elemen img
                 }
+            }
+
+
+            function showProducts(sellerId, sellerName) {
+                document.getElementById('sellerGrid').classList.add('hidden');
+                document.getElementById('backButton').classList.remove('hidden');
+                document.getElementById('pageTitle').textContent = 'Produk ' + sellerName;
+                
+                // Fetch products for the selected seller
+                fetch(`get_barang.php?seller_id=${sellerId}`)
+                    .then(response => response.text())
+                    .then(html => {
+                        const productGrid = document.getElementById('productGrid');
+                        productGrid.innerHTML = html;
+                        productGrid.classList.remove('hidden');
+                    });
+            }
+
+            function showSellerGrid() {
+                document.getElementById('sellerGrid').classList.remove('hidden');
+                document.getElementById('backButton').classList.add('hidden');
+                document.getElementById('productGrid').classList.add('hidden');
+                document.getElementById('pageTitle').textContent = 'Pilih Penjual';
             }
         </script>
 
