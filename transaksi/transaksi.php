@@ -110,18 +110,19 @@ if(isset($_POST['withdraw'])) {
                     <div class="bg-white rounded-lg shadow-lg p-6 fade-in">
                         <h2 class="text-2xl font-bold mb-6 text-blue-600">Top Up Saldo User</h2>
                         <form method="POST" class="space-y-4">
-                            <div>
+                            <div class="relative">
                                 <label class="block text-gray-700 mb-2">Pilih User</label>
-                                
-                                <select name="id_user" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400">
-                                <option value="" disabled selected>Pilih User</option>
-                                    <?php
-                                    $users = mysqli_query($conn, "SELECT * FROM user");
-                                    while($user = mysqli_fetch_array($users)) {
-                                        echo "<option value='{$user['id_user']}'>{$user['nama_user']} - Saldo: Rp " . number_format($user['saldo'],0,',','.') . "</option>";
-                                    }
-                                    ?>
-                                </select>
+                                <input type="text" class="search-input w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400" placeholder="Cari user..." data-target="userDropdown">
+                                <div class="custom-dropdown hidden absolute z-10 w-full bg-white border rounded-lg mt-1 max-h-60 overflow-y-auto" id="userDropdown">
+                                    <select name="id_user" class="hidden">
+                                        <?php
+                                        $users = mysqli_query($conn, "SELECT * FROM user");
+                                        while($user = mysqli_fetch_array($users)) {
+                                            echo "<option value='{$user['id_user']}'>{$user['nama_user']} - Saldo: Rp " . number_format($user['saldo'],0,',','.') . "</option>";
+                                        }
+                                        ?>
+                                    </select>
+                                </div>
                             </div>
                             <div>
                                 <label class="block text-gray-700 mb-2">Jumlah Top Up</label>
@@ -137,17 +138,18 @@ if(isset($_POST['withdraw'])) {
                     <div class="bg-white rounded-lg shadow-lg p-6 fade-in">
                         <h2 class="text-2xl font-bold mb-6 text-green-600">Penarikan Saldo Penjual</h2>
                         <form method="POST" class="space-y-4">
-                            <div>
-                                <label class="block text-gray-700 mb-2">Pilih Penjual</label>
-                                <select name="id_penjual" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-green-400">
-                                    <option value="" disabled selected>Pilih Penjual</option>
-                                    <?php
-                                    $sellers = mysqli_query($conn, "SELECT * FROM penjual");
-                                    while($seller = mysqli_fetch_array($sellers)) {
-                                        echo "<option value='{$seller['id_penjual']}'>{$seller['nama_penjual']} - Saldo: Rp " . number_format($seller['saldo'],0,',','.') . "</option>";
-                                    }
-                                    ?>
-                                </select>
+                            <div class="relative">
+                                <input type="text" class="search-input w-full p-2 border rounded-lg focus:ring-2 focus:ring-green-400" placeholder="Cari penjual..." data-target="sellerDropdown">
+                                <div class="custom-dropdown hidden absolute z-10 w-full bg-white border rounded-lg mt-1 max-h-60 overflow-y-auto" id="sellerDropdown">
+                                    <select name="id_penjual" class="hidden">
+                                        <?php
+                                        $sellers = mysqli_query($conn, "SELECT * FROM penjual");
+                                        while($seller = mysqli_fetch_array($sellers)) {
+                                            echo "<option value='{$seller['id_penjual']}'>{$seller['nama_penjual']} - Saldo: Rp " . number_format($seller['saldo'],0,',','.') . "</option>";
+                                        }
+                                        ?>
+                                    </select>
+                                </div>
                             </div>
                             <div>
                                 <label class="block text-gray-700 mb-2">Jumlah Penarikan</label>
@@ -182,6 +184,68 @@ if(isset($_POST['withdraw'])) {
     </div>
 
     <script>
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize searchable dropdowns
+            initSearchableDropdowns();
+        });
+
+        function initSearchableDropdowns() {
+            const searchInputs = document.querySelectorAll('.search-input');
+            
+            searchInputs.forEach(input => {
+                const dropdownId = input.dataset.target;
+                const dropdown = document.getElementById(dropdownId);
+                const select = dropdown.querySelector('select');
+                
+                // Create dropdown items from select options
+                const options = Array.from(select.options);
+                const dropdownList = document.createElement('div');
+                dropdownList.className = 'dropdown-list';
+                
+                options.forEach(option => {
+                    const item = document.createElement('div');
+                    item.className = 'p-2 hover:bg-gray-100 cursor-pointer';
+                    item.textContent = option.text;
+                    item.dataset.value = option.value;
+                    
+                    item.addEventListener('click', () => {
+                        input.value = option.text;
+                        select.value = option.value;
+                        dropdown.classList.add('hidden');
+                    });
+                    
+                    dropdownList.appendChild(item);
+                });
+                
+                dropdown.appendChild(dropdownList);
+                
+                // Show dropdown on input focus
+                input.addEventListener('focus', () => {
+                    dropdown.classList.remove('hidden');
+                });
+                
+                // Filter dropdown items
+                input.addEventListener('input', () => {
+                    const searchText = input.value.toLowerCase();
+                    const items = dropdownList.children;
+                    
+                    Array.from(items).forEach(item => {
+                        const text = item.textContent.toLowerCase();
+                        item.style.display = text.includes(searchText) ? 'block' : 'none';
+                    });
+                    
+                    dropdown.classList.remove('hidden');
+                });
+                
+                // Hide dropdown when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+                        dropdown.classList.add('hidden');
+                    }
+                });
+            });
+        }
         function printReceipt(transactionId) {
             // Fetch transaction details from database using AJAX
             // For demo, using static content
@@ -446,6 +510,8 @@ if(isset($_POST['withdraw'])) {
                 margin: 0 auto;
             }
         }
+
+        
     </style>
 </body>
 </html>
