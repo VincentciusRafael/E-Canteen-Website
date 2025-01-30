@@ -252,7 +252,7 @@ $total_halaman = ceil($total_data / $batas);
                         <div class="text-xs">================================</div>
                     </div>
 
-                    <div class="mb-4">
+                    <div class="mb-4 text-sm">
                         <div>No. Transaksi: #${String(transactionId).padStart(6, '0')}</div>
                         <div>Tanggal: ${date.toLocaleString('id-ID')}</div>
                         <div>Kasir: ADMIN</div>
