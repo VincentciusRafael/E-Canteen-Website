@@ -10,7 +10,7 @@ if (!isset($_SESSION['username'])) {
 
 // Fetch user data - using prepared statement to prevent SQL injection
 $username = $_SESSION['username'];
-$user_query = mysqli_prepare($conn, "SELECT username, saldo FROM user WHERE username = ?");
+$user_query = mysqli_prepare($conn, "SELECT id_user, username, saldo FROM user WHERE username = ?");
 mysqli_stmt_bind_param($user_query, "s", $username);
 mysqli_stmt_execute($user_query);
 $result = mysqli_stmt_get_result($user_query);
@@ -22,6 +22,8 @@ if (!$user_data) {
     header("Location: login.php");
     exit();
 }
+
+$_SESSION['id_user'] = $user_data['id_user']; 
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -53,9 +55,14 @@ if (!$user_data) {
                         <p class="text-gray-600">Saldo: Rp <?php echo number_format($user_data['saldo'], 0, ',', '.'); ?></p>
                     </div>
                 </div>
-                <a href="logout_pembelian.php" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">
-                    <i class="fas fa-sign-out-alt mr-1"></i> Logout
-                </a>
+                <div class="flex items-center space-x-4">
+                    <button onclick="toggleHistoryModal()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                        <i class="fas fa-history mr-1"></i> Riwayat
+                    </button>
+                    <a href="logout_pembelian.php" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">
+                        <i class="fas fa-sign-out-alt mr-1"></i> Logout
+                    </a>
+                </div>
             </div>
         </div>
         <div class="bg-white shadow-md rounded-lg p-6">
@@ -150,6 +157,10 @@ if (!$user_data) {
                     <!-- Cart items will be dynamically added here -->
                 </div>
                 <div class="mt-4">
+                    <div class="mb-4">
+                        <label for="orderNotes" class="block text-sm font-medium text-gray-700 mb-1">Catatan Pesanan:</label>
+                        <textarea id="orderNotes" class="w-full px-3 py-2 border rounded-lg resize-none" rows="2"></textarea>
+                    </div>
                     <div class="flex justify-between font-bold">
                         <span>Total:</span>
                         <span id="cartTotal">Rp 0</span>
@@ -157,6 +168,21 @@ if (!$user_data) {
                     <button onclick="checkout()" class="w-full bg-green-500 text-white py-2 rounded mt-4 hover:bg-green-600">
                         Pesan Sekarang
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Modal -->
+        <div id="historyModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 items-center justify-center">
+            <div class="bg-white w-full max-w-3xl rounded-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold">Riwayat Pembelian</h3>
+                    <button onclick="toggleHistoryModal()" class="text-gray-500">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="historyContent" class="space-y-4 max-h-96 overflow-y-auto">
+                    <!-- History items will be dynamically added here -->
                 </div>
             </div>
         </div>
@@ -243,13 +269,44 @@ if (!$user_data) {
             return;
         }
 
+        // Get notes from textarea
+        const orderNotes = document.getElementById('orderNotes').value;
+
+        // Group items by seller
+        const itemsBySeller = cart.reduce((acc, item) => {
+            const sellerId = item.id_penjual;
+            if (!acc[sellerId]) {
+                acc[sellerId] = [];
+            }
+            acc[sellerId].push(item);
+            return acc;
+        }, {});
+
+        // Create order data structure
         const orderData = {
             items: cart.map(item => ({
                 id_produk: item.id_produk,
                 quantity: item.quantity,
-                harga: item.harga
-            }))
+                harga: item.harga,
+                id_penjual: item.id_penjual // Include seller ID for each item
+            })),
+            metode_pembayaran: 'Saldo',
+            catatan: orderNotes
         };
+
+        // Calculate total amount
+        const totalAmount = cart.reduce((sum, item) => sum + (item.harga * item.quantity), 0);
+
+        // Create confirmation message with details
+        const confirmMessage = `Detail Pesanan:
+        Total Pembayaran: Rp ${totalAmount.toLocaleString()}
+        Catatan: ${orderNotes || '(Tidak ada catatan)'}
+
+        Lanjutkan pembelian?`;
+
+        if (!confirm(confirmMessage)) {
+            return;
+        }
 
         fetch('order.php', {
             method: 'POST',
@@ -265,6 +322,8 @@ if (!$user_data) {
                 cart = [];
                 updateCartUI();
                 toggleCartModal();
+                // Reload the page to update product stock and user balance
+                window.location.reload();
             } else {
                 alert('Gagal membuat pesanan: ' + result.message);
             }
@@ -274,6 +333,75 @@ if (!$user_data) {
             console.error('Error:', error);
         });
     }
+
+    function toggleHistoryModal() {
+            const historyModal = document.getElementById('historyModal');
+            historyModal.classList.toggle('hidden');
+            historyModal.classList.toggle('flex');
+            
+            if (!historyModal.classList.contains('hidden')) {
+                loadPurchaseHistory();
+            }
+        }
+
+        function loadPurchaseHistory() {
+    fetch('history_pembelian.php')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Data received:', data); // For debugging
+            const historyContent = document.getElementById('historyContent');
+            historyContent.innerHTML = '';
+            
+            if (data.length === 0) {
+                historyContent.innerHTML = '<p class="text-center text-gray-500">Belum ada riwayat pembelian</p>';
+                return;
+            }
+
+            data.forEach(order => {
+                const orderElement = document.createElement('div');
+                orderElement.className = 'bg-gray-50 rounded-lg p-4 mb-4';
+                
+                let itemsHtml = '';
+                if (Array.isArray(order.items)) {
+                    order.items.forEach(item => {
+                        itemsHtml += `
+                            <div class="flex justify-between items-center py-2">
+                                <span>${item.nama_produk} (${item.jumlah}x)</span>
+                                <span>Rp ${parseInt(item.harga_satuan).toLocaleString()}</span>
+                            </div>
+                        `;
+                    });
+                }
+                
+                orderElement.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <div>
+                            <span class="font-semibold">Pembelian #${order.id_pembelian}</span>
+                            <span class="text-sm text-gray-500 ml-2">${order.tanggal_pembelian}</span>
+                        </div>
+                        <span class="px-2 py-1 rounded ${order.status === 'Selesai' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                            ${order.status}
+                        </span>
+                    </div>
+                    <div class="border-t border-gray-200 mt-2 pt-2">
+                        ${itemsHtml}
+                    </div>
+                    <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-200">
+                        <span class="font-semibold">Total:</span>
+                        <span class="font-semibold">Rp ${parseInt(order.total_harga).toLocaleString()}</span>
+                    </div>
+                    ${order.catatan ? `<div class="mt-2 text-sm text-gray-600">Catatan: ${order.catatan}</div>` : ''}
+                `;
+                    
+                historyContent.appendChild(orderElement);
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            const historyContent = document.getElementById('historyContent');
+            historyContent.innerHTML = '<p class="text-center text-red-500">Gagal memuat riwayat pembelian</p>';
+        });
+}
 
     // Quantity controls
     function increaseQuantity(productId) {

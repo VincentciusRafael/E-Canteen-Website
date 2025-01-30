@@ -82,10 +82,13 @@ try {
         }
 
         // Create order for seller
-        $order_query = "INSERT INTO pesanan (id_user, id_penjual, tanggal_pesanan, total_harga, status) 
-                        VALUES (?, ?, NOW(), ?, 'Selesai')";
+        $order_query = "INSERT INTO pembelian (id_user, id_penjual, total_harga, status, metode_pembayaran, 
+                        tanggal_pembelian, catatan, status_pesanan) 
+                        VALUES (?, ?, ?, 'completed', ?, NOW(), ?, 'menunggu')";
         $order_stmt = $conn->prepare($order_query);
-        $order_stmt->bind_param('iid', $id_user, $id_penjual, $seller_total);
+        $payment_method = $input['metode_pembayaran'] ?? 'Saldo';
+        $notes = $input['catatan'] ?? '';
+        $order_stmt->bind_param('iidss', $id_user, $id_penjual, $seller_total, $payment_method, $notes);
         $order_stmt->execute();
         $order_id = $conn->insert_id;
 
@@ -96,20 +99,23 @@ try {
         $seller_saldo_stmt->execute();
 
         // Insert order items and update product stock
-        $item_query = "INSERT INTO detail_pesanan (id_pesanan, id_produk, quantity, harga) 
-                       VALUES (?, ?, ?, ?)";
+        $item_query = "INSERT INTO detail_pembelian (id_pembelian, id_produk, jumlah, harga_satuan, subtotal) 
+                       VALUES (?, ?, ?, ?, ?)";
         $item_stmt = $conn->prepare($item_query);
 
         $update_stock_query = "UPDATE produk SET stok = stok - ? WHERE id_produk = ?";
         $update_stock_stmt = $conn->prepare($update_stock_query);
 
         foreach ($items as $item) {
+            $subtotal = $item['harga'] * $item['quantity'];
+            
             // Insert order item
-            $item_stmt->bind_param('iidi', 
+            $item_stmt->bind_param('iiidd', 
                 $order_id, 
                 $item['id_produk'], 
                 $item['quantity'], 
-                $item['harga']
+                $item['harga'],
+                $subtotal
             );
             $item_stmt->execute();
 
@@ -139,7 +145,7 @@ try {
     // Close all statements and connection
     if (isset($balance_stmt)) $balance_stmt->close();
     if (isset($update_balance_stmt)) $update_balance_stmt->close();
-    if (isset($seller_query)) $seller_stmt->close();
+    if (isset($seller_stmt)) $seller_stmt->close();
     if (isset($order_stmt)) $order_stmt->close();
     if (isset($seller_saldo_stmt)) $seller_saldo_stmt->close();
     if (isset($item_stmt)) $item_stmt->close();
