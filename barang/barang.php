@@ -2,6 +2,11 @@
 session_start();
 include '../config.php';
 
+if(!isset($_SESSION['id_admin'])) {
+    header("Location: ../login.php");
+    exit();
+}
+
 // Logika untuk menghapus produk
 if (isset($_GET['hapus'])) {
     $id = $_GET['hapus'];
@@ -288,7 +293,7 @@ $query = mysqli_query($conn, $base_query . " ORDER BY produk.id_produk DESC LIMI
             <div class="flex flex-col items-center py-6 px-4">
                 <div class="flex flex-col items-center mb-6">
                     <img src="../images/WhatsApp Image 2025-01-04 at 10.08.50_8e6a12dc.jpg" alt="Logo" class="rounded-full mb-2" style="height: 100px;">
-                    <h1 class="text-xl font-semibold text-gray-700">Admin</h1> 
+                    <h1 class="text-xl font-semibold text-gray-700">Admin <?php echo htmlspecialchars($_SESSION['username'] ?? ''); ?></h1> 
                 </div><br>
 
                 <!-- Navigation -->
@@ -382,42 +387,50 @@ $query = mysqli_query($conn, $base_query . " ORDER BY produk.id_produk DESC LIMI
                 <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
                     <h2 class="text-xl font-semibold text-gray-800 mb-4">Tambah Produk</h2>
                     <form method="POST" enctype="multipart/form-data">
-                        <div class="mb-4">
-                            <label for="nama_produk" class="block text-gray-700 font-medium mb-2">Nama Produk</label>
-                            <input type="text" name="nama_produk" id="nama_produk" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        </div>
-                        <div class="mb-4">
-                            <label for="id_penjual" class="block text-gray-700 font-medium mb-2">Nama Penjual</label>
-                            <select name="id_penjual" id="id_penjual" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                                <option value="" disabled selected>Pilih Penjual</option>
-                                <?php
-                                $penjualQuery = mysqli_query($conn, "SELECT id_penjual, nama_penjual FROM penjual");
-                                while ($penjual = mysqli_fetch_assoc($penjualQuery)) {
-                                    echo "<option value='{$penjual['id_penjual']}'>{$penjual['nama_penjual']}</option>";
-                                }
-                                ?>
-                            </select>
-                        </div>
-                        <div class="mb-4">
-                            <label for="deskripsi_produk" class="block text-gray-700 font-medium mb-2">Deskripsi Produk</label>
-                            <input type="text" name="deskripsi_produk" id="deskripsi_produk" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        </div>
-                        <div class="mb-4">
-                            <label for="harga" class="block text-gray-700 font-medium mb-2">Harga</label>
-                            <input type="number" name="harga" id="harga" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        </div>
-                        <div class="mb-4">
-                            <label for="stok" class="block text-gray-700 font-medium mb-2">Stok</label>
-                            <input type="number" name="stok" id="stok" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        </div>
-                        <div class="mb-4">
-                            <label for="image" class="block text-gray-700 font-medium mb-2">Pilih Gambar</label>
-                            <input type="file" name="image" id="image"  accept=""  class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required onchange="previewImage(event)">
-                            <div id="image-preview" class="mt-4">
-                                <img id="preview" src="#" alt="Pratinjau Gambar" class="hidden w-32 h-32 object-cover rounded border">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Kolom Kiri -->
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="nama_produk" class="block text-gray-700 font-medium mb-2">Nama Produk</label>
+                                    <input type="text" name="nama_produk" id="nama_produk" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                                </div>
+                                <div>
+                                    <label for="id_penjual" class="block text-gray-700 font-medium mb-2">Nama Penjual</label>
+                                    <select name="id_penjual" id="id_penjual" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                                        <option value="" disabled selected>Pilih Penjual</option>
+                                        <?php
+                                        $penjualQuery = mysqli_query($conn, "SELECT id_penjual, nama_penjual FROM penjual");
+                                        while ($penjual = mysqli_fetch_assoc($penjualQuery)) {
+                                            echo "<option value='{$penjual['id_penjual']}'>{$penjual['nama_penjual']}</option>";
+                                        }
+                                        ?>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="deskripsi_produk" class="block text-gray-700 font-medium mb-2">Deskripsi Produk</label>
+                                    <input type="text" name="deskripsi_produk" id="deskripsi_produk" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                                </div>
+                                <div>
+                                    <label for="harga" class="block text-gray-700 font-medium mb-2">Harga</label>
+                                    <input type="number" name="harga" id="harga" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                                </div>
+                            </div>
+                            <!-- Kolom Kanan -->
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="stok" class="block text-gray-700 font-medium mb-2">Stok</label>
+                                    <input type="number" name="stok" id="stok" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                                </div>
+                                <div>
+                                    <label for="image" class="block text-gray-700 font-medium mb-2">Pilih Gambar</label>
+                                    <input type="file" name="image" id="image" accept="image/*" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required onchange="previewImage(event)">
+                                    <div id="image-preview" class="mt-4">
+                                        <img id="preview" src="#" alt="Pratinjau Gambar" class="hidden w-32 h-32 object-cover rounded border">
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="flex justify-end space-x-4">
+                        <div class="flex justify-end mt-6 space-x-4 sticky bottom-0 bg-white pt-4 border-t">
                             <button type="button" onclick="toggleModal()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400">
                                 Batal
                             </button>
@@ -486,7 +499,7 @@ $query = mysqli_query($conn, $base_query . " ORDER BY produk.id_produk DESC LIMI
                                         <!-- Preview Gambar Saat Ini -->
                                         <div class="mb-4 p-4 border rounded-lg bg-gray-50">
                                             <p class="text-sm text-gray-500 mb-2">Gambar Saat Ini:</p>
-                                            <img id="current-image" src="" alt="Gambar Lama" class="w-full h-48 object-contain rounded border bg-white">
+                                            <img id="current-image" src="../<?php echo $produk['image']; ?>"  alt="Gambar Lama" class="w-full h-48 object-contain rounded border bg-white">
                                         </div>
 
                                         <!-- Input File & Preview Gambar Baru -->

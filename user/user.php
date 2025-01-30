@@ -1,6 +1,10 @@
 <?php
 session_start();
 include '../config.php';
+if(!isset($_SESSION['id_admin'])) {
+    header("Location: ../login.php");
+    exit();
+}
 
 // Logika untuk menghapus user
 if (isset($_GET['hapus'])) {
@@ -51,13 +55,22 @@ if (isset($_POST['edit'])) {
     $role = mysqli_real_escape_string($conn, $_POST['role']);
     $saldo = mysqli_real_escape_string($conn, $_POST['saldo']);
     
+    // Build the base update query
     $update_query = "UPDATE user SET 
                     nama_user='$nama_user', 
                     username='$username', 
                     email='$email', 
                     role='$role', 
-                    saldo='$saldo' 
-                    WHERE id_user='$id_user'";
+                    saldo='$saldo'";
+    
+    // Add password to update query only if a new password was provided
+    if (!empty($_POST['password'])) {
+        $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+        $update_query .= ", password='$password'";
+    }
+    
+    // Complete the query with the WHERE clause
+    $update_query .= " WHERE id_user='$id_user'";
     
     if (mysqli_query($conn, $update_query)) {
         $_SESSION['edit_success'] = true;
@@ -161,7 +174,7 @@ function buildPaginationUrl($page) {
             <div class="flex flex-col items-center py-6 px-4">
                 <div class="flex flex-col items-center mb-6">
                     <img src="../images/WhatsApp Image 2025-01-04 at 10.08.50_8e6a12dc.jpg" alt="Logo" class="rounded-full mb-2" style="height: 100px;">
-                    <h1 class="text-xl font-semibold text-gray-700">Admin</h1> 
+                    <h1 class="text-xl font-semibold text-gray-700">Admin <?php echo htmlspecialchars($_SESSION['username'] ?? ''); ?></h1> 
                 </div><br>
 
                 <!-- Navigation -->
@@ -431,6 +444,14 @@ function buildPaginationUrl($page) {
                             Saldo
                         </label>
                         <input id="edit_saldo" name="saldo" type="number" min="0" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 font-medium mb-2" for="edit_password">
+                            Password Baru
+                        </label>
+                        <input id="edit_password" name="password" type="password" 
+                            class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Kosongkan jika tidak ingin mengubah password">
                     </div>
                     <div class="flex justify-end">
                         <button type="button" onclick="toggleModal('edit')" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg mr-2">

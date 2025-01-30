@@ -1,257 +1,338 @@
 <?php
-// File: controllers/TransaksiController.php
+session_start();
+include '../config.php';
 
-class TransaksiController {
-    private $db;
-    
-    public function __construct($db) {
-        $this->db = $db;
-    }
-    
-    // Mendapatkan semua transaksi dengan filter
-    public function getTransaksi($filter = []) {
-        $query = "
-            SELECT 
-                p.id_pembelian,
-                u.nama_user,
-                pj.nama_penjual,
-                p.total_harga,
-                p.status,
-                p.metode_pembayaran,
-                p.tanggal_pembelian,
-                p.waktu_selesai,
-                p.status_pesanan,
-                p.catatan
-            FROM 
-                pembelian p
-                JOIN user u ON p.id_user = u.id_user
-                JOIN penjual pj ON p.id_penjual = pj.id_penjual
-            WHERE 1=1
-        ";
-        
-        // Add filters
-        if (!empty($filter['status'])) {
-            $query .= " AND p.status = :status";
-        }
-        if (!empty($filter['date_start'])) {
-            $query .= " AND p.tanggal_pembelian >= :date_start";
-        }
-        if (!empty($filter['date_end'])) {
-            $query .= " AND p.tanggal_pembelian <= :date_end";
-        }
-        
-        $query .= " ORDER BY p.tanggal_pembelian DESC";
-        
-        return $query;
-    }
-    
-    // Mendapatkan detail transaksi
-    public function getDetailTransaksi($id_pembelian) {
-        $query = "
-            SELECT 
-                dp.*,
-                pr.nama_produk,
-                pr.deskripsi_produk
-            FROM 
-                detail_pembelian dp
-                JOIN produk pr ON dp.id_produk = pr.id_produk
-            WHERE 
-                dp.id_pembelian = :id_pembelian
-        ";
-        
-        return $query;
-    }
-    
-    // Generate laporan penjualan per penjual
-    public function getLaporanPenjual($tanggal_awal, $tanggal_akhir) {
-        $query = "
-            SELECT 
-                pj.nama_penjual,
-                COUNT(p.id_pembelian) as total_transaksi,
-                SUM(p.total_harga) as total_pendapatan,
-                COUNT(CASE WHEN p.status = 'completed' THEN 1 END) as transaksi_sukses,
-                COUNT(CASE WHEN p.status = 'cancelled' THEN 1 END) as transaksi_batal
-            FROM 
-                penjual pj
-                LEFT JOIN pembelian p ON pj.id_penjual = p.id_penjual
-                AND p.tanggal_pembelian BETWEEN :tanggal_awal AND :tanggal_akhir
-            GROUP BY 
-                pj.id_penjual, pj.nama_penjual
-            ORDER BY 
-                total_pendapatan DESC
-        ";
-        
-        return $query;
-    }
-    
-    // Generate laporan produk terlaris
-    public function getTopProducts($limit = 10) {
-        $query = "
-            SELECT 
-                pr.nama_produk,
-                pr.deskripsi_produk,
-                pj.nama_penjual,
-                SUM(dp.jumlah) as total_terjual,
-                SUM(dp.subtotal) as total_pendapatan
-            FROM 
-                produk pr
-                JOIN detail_pembelian dp ON pr.id_produk = dp.id_produk
-                JOIN pembelian p ON dp.id_pembelian = p.id_pembelian
-                JOIN penjual pj ON pr.id_penjual = pj.id_penjual
-            WHERE 
-                p.status = 'completed'
-            GROUP BY 
-                pr.id_produk, pr.nama_produk, pr.deskripsi_produk, pj.nama_penjual
-            ORDER BY 
-                total_terjual DESC
-            LIMIT :limit
-        ";
-        
-        return $query;
-    }
+// Check if user is logged in
+if (!isset($_SESSION['username'])) {
+    header("Location: login_pembeli.php");
+    exit();
+}
+
+// Fetch user data - using prepared statement to prevent SQL injection
+$username = $_SESSION['username'];
+$user_query = mysqli_prepare($conn, "SELECT username, saldo FROM user WHERE username = ?");
+mysqli_stmt_bind_param($user_query, "s", $username);
+mysqli_stmt_execute($user_query);
+$result = mysqli_stmt_get_result($user_query);
+$user_data = mysqli_fetch_assoc($result);
+
+// If user data not found, redirect to login
+if (!$user_data) {
+    session_destroy();
+    header("Location: login.php");
+    exit();
 }
 ?>
-
-<!-- File: views/transaksi/index.php -->
-<div class="container">
-    <h2>Monitoring Transaksi</h2>
-    
-    <!-- Filter Section -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <form method="GET" action="" class="row g-3">
-                <div class="col-md-3">
-                    <label>Status</label>
-                    <select name="status" class="form-control">
-                        <option value="">Semua Status</option>
-                        <option value="pending">Pending</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Pembelian - E-Canteen</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <style>
+        .search-input {
+            max-width: 250px;
+        }
+        .product-image {
+            height: 200px;
+            object-fit: cover;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+         <!-- User Info Section -->
+         <div class="bg-white shadow-md rounded-lg p-4 mb-6">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <i class="fas fa-user text-blue-500 text-xl mr-2"></i>
+                    <div>
+                        <p class="font-semibold">Selamat datang, <?php echo htmlspecialchars($user_data['username']); ?></p>
+                        <p class="text-gray-600">Saldo: Rp <?php echo number_format($user_data['saldo'], 0, ',', '.'); ?></p>
+                    </div>
+                </div>
+                <a href="logout_pembelian.php" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">
+                    <i class="fas fa-sign-out-alt mr-1"></i> Logout
+                </a>
+            </div>
+        </div>
+        <div class="bg-white shadow-md rounded-lg p-6">
+            <h1 class="text-2xl font-bold mb-6 text-center">Daftar Produk E-Kantin</h1>
+            <div class="mb-6 flex justify-between items-center">
+                <div class="flex items-center">
+                    <select id="sellerFilter" class="px-4 py-2 border rounded-lg mr-4">
+                        <option value="">Semua Penjual</option>
+                        <?php
+                        $seller_query = mysqli_query($conn, "SELECT DISTINCT nama_penjual FROM penjual");
+                        while ($seller = mysqli_fetch_assoc($seller_query)) {
+                            echo "<option value='{$seller['nama_penjual']}'>{$seller['nama_penjual']}</option>";
+                        }
+                        ?>
                     </select>
+                    <input type="text" id="searchInput" placeholder="Cari Produk..." 
+                        class="search-input px-4 py-2 border rounded-lg">
                 </div>
-                <div class="col-md-3">
-                    <label>Tanggal Mulai</label>
-                    <input type="date" name="date_start" class="form-control">
-                </div>
-                <div class="col-md-3">
-                    <label>Tanggal Akhir</label>
-                    <input type="date" name="date_end" class="form-control">
-                </div>
-                <div class="col-md-3">
-                    <label>&nbsp;</label>
-                    <button type="submit" class="btn btn-primary w-100">Filter</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    
-    <!-- Transaction Table -->
-    <div class="card">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Pembeli</th>
-                            <th>Penjual</th>
-                            <th>Total</th>
-                            <th>Status</th>
-                            <th>Metode Pembayaran</th>
-                            <th>Tanggal</th>
-                            <th>Status Pesanan</th>
-                            <th>Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($transaksi as $t): ?>
-                        <tr>
-                            <td><?= $t['id_pembelian'] ?></td>
-                            <td><?= $t['nama_user'] ?></td>
-                            <td><?= $t['nama_penjual'] ?></td>
-                            <td>Rp <?= number_format($t['total_harga'], 0, ',', '.') ?></td>
-                            <td>
-                                <span class="badge bg-<?= getStatusColor($t['status']) ?>">
-                                    <?= $t['status'] ?>
-                                </span>
-                            </td>
-                            <td><?= $t['metode_pembayaran'] ?></td>
-                            <td><?= date('d/m/Y H:i', strtotime($t['tanggal_pembelian'])) ?></td>
-                            <td>
-                                <span class="badge bg-<?= getOrderStatusColor($t['status_pesanan']) ?>">
-                                    <?= $t['status_pesanan'] ?>
-                                </span>
-                            </td>
-                            <td>
-                                <a href="detail.php?id=<?= $t['id_pembelian'] ?>" 
-                                   class="btn btn-sm btn-info">Detail</a>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                <button id="cartButton" class="bg-blue-500 text-white px-4 py-2 rounded-lg relative">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span id="cartCount" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">0</span>
+                </button>
             </div>
-        </div>
-    </div>
-</div>
 
-<!-- File: views/transaksi/detail.php -->
-<div class="container">
-    <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h4>Detail Transaksi #<?= $transaksi['id_pembelian'] ?></h4>
-            <a href="index.php" class="btn btn-secondary">Kembali</a>
+            <div id="productGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <?php
+                $query = "SELECT p.*, pj.nama_penjual 
+                          FROM produk p 
+                          JOIN penjual pj ON p.id_penjual = pj.id_penjual 
+                          WHERE p.stok > 0 
+                          ORDER BY p.id_produk DESC";
+                $result = mysqli_query($conn, $query);
+
+                while ($produk = mysqli_fetch_assoc($result)): 
+                    // Convert the product data to a JSON string for use in JavaScript
+                    $produkJson = json_encode($produk);
+                ?>
+                    <div class="product-card bg-white rounded-lg shadow-md overflow-hidden" 
+                         data-seller="<?php echo htmlspecialchars($produk['nama_penjual']); ?>"
+                         data-product-id="<?php echo $produk['id_produk']; ?>">
+                        <?php if (!empty($produk['image'])): ?>
+                            <img src="../uploads/<?php echo htmlspecialchars($produk['image']); ?>" 
+                                alt="<?php echo htmlspecialchars($produk['nama_produk']); ?>" 
+                                class="product-image"
+                                onerror="this.src='../uploads/default.jpg'">
+                        <?php else: ?>
+                            <img src="../uploads/default.jpg" 
+                                alt="Default Image" 
+                                class="product-image">
+                        <?php endif; ?>
+                        <div class="p-4">
+                            <h3 class="text-lg font-bold mb-2"><?php echo htmlspecialchars($produk['nama_produk']); ?></h3>
+                            <p class="text-gray-600 mb-1">Penjual: <?php echo htmlspecialchars($produk['nama_penjual']); ?></p>
+                            <p class="text-blue-600 font-semibold mb-1">
+                                Harga: Rp <?php echo number_format($produk['harga'], 0, ',', '.'); ?>
+                            </p>
+                            <p class="text-green-600 mb-4">Stok: <?php echo $produk['stok']; ?></p>
+                            
+                            <div class="flex items-center">
+                                <button onclick="decreaseQuantity(<?php echo $produk['id_produk']; ?>)" 
+                                    class="bg-gray-200 px-2 py-1 rounded-l">-</button>
+                                <input type="number" 
+                                    id="quantity-<?php echo $produk['id_produk']; ?>" 
+                                    value="1" 
+                                    min="1" 
+                                    max="<?php echo $produk['stok']; ?>" 
+                                    class="w-12 text-center border"
+                                    onchange="validateQuantity(<?php echo $produk['id_produk']; ?>)">
+                                <button onclick="increaseQuantity(<?php echo $produk['id_produk']; ?>)" 
+                                    class="bg-gray-200 px-2 py-1 rounded-r">+</button>
+                                <button onclick='addToCart(<?php echo $produkJson; ?>)' 
+                                    class="ml-2 w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition">
+                                    Tambah ke Keranjang
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                <?php endwhile; ?>
+            </div>
         </div>
-        <div class="card-body">
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <h5>Informasi Pembeli</h5>
-                    <p>Nama: <?= $transaksi['nama_user'] ?></p>
-                    <p>Tanggal: <?= date('d/m/Y H:i', strtotime($transaksi['tanggal_pembelian'])) ?></p>
-                    <p>Status: <?= $transaksi['status'] ?></p>
+
+        <!-- Cart Modal -->
+        <div id="cartModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 items-center justify-center">
+            <div class="bg-white w-full max-w-md rounded-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold">Keranjang Anda</h3>
+                    <button onclick="toggleCartModal()" class="text-gray-500">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
-                <div class="col-md-6">
-                    <h5>Informasi Penjual</h5>
-                    <p>Nama: <?= $transaksi['nama_penjual'] ?></p>
-                    <p>Metode Pembayaran: <?= $transaksi['metode_pembayaran'] ?></p>
-                    <p>Status Pesanan: <?= $transaksi['status_pesanan'] ?></p>
+                <div id="cartItems" class="space-y-4 max-h-64 overflow-y-auto">
+                    <!-- Cart items will be dynamically added here -->
+                </div>
+                <div class="mt-4">
+                    <div class="flex justify-between font-bold">
+                        <span>Total:</span>
+                        <span id="cartTotal">Rp 0</span>
+                    </div>
+                    <button onclick="checkout()" class="w-full bg-green-500 text-white py-2 rounded mt-4 hover:bg-green-600">
+                        Pesan Sekarang
+                    </button>
                 </div>
             </div>
-            
-            <h5>Detail Produk</h5>
-            <div class="table-responsive">
-                <table class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>Produk</th>
-                            <th>Harga Satuan</th>
-                            <th>Jumlah</th>
-                            <th>Subtotal</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($detail_transaksi as $detail): ?>
-                        <tr>
-                            <td><?= $detail['nama_produk'] ?></td>
-                            <td>Rp <?= number_format($detail['harga_satuan'], 0, ',', '.') ?></td>
-                            <td><?= $detail['jumlah'] ?></td>
-                            <td>Rp <?= number_format($detail['subtotal'], 0, ',', '.') ?></td>
-                        </tr>
-                        <?php endforeach; ?>
-                        <tr>
-                            <td colspan="3" class="text-end"><strong>Total</strong></td>
-                            <td><strong>Rp <?= number_format($transaksi['total_harga'], 0, ',', '.') ?></strong></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            
-            <?php if ($transaksi['catatan']): ?>
-            <div class="mt-4">
-                <h5>Catatan</h5>
-                <p><?= $transaksi['catatan'] ?></p>
-            </div>
-            <?php endif; ?>
         </div>
     </div>
-</div>
+
+    <script>
+    let cart = [];
+
+    function updateCartUI() {
+        const cartItems = document.getElementById('cartItems');
+        const cartCount = document.getElementById('cartCount');
+        const cartTotal = document.getElementById('cartTotal');
+        
+        cartItems.innerHTML = '';
+        
+        let total = 0;
+        cart.forEach((item, index) => {
+            const itemTotal = item.harga * item.quantity;
+            total += itemTotal;
+            
+            const itemElement = document.createElement('div');
+            itemElement.className = 'flex justify-between items-center p-2 border-b';
+            itemElement.innerHTML = `
+                <div class="flex-1">
+                    <div class="font-semibold">${item.nama_produk}</div>
+                    <div class="text-sm text-gray-600">${item.quantity} x Rp ${item.harga.toLocaleString()}</div>
+                </div>
+                <div class="flex items-center">
+                    <span class="font-semibold">Rp ${itemTotal.toLocaleString()}</span>
+                    <button onclick="removeFromCart(${index})" class="ml-2 text-red-500">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            cartItems.appendChild(itemElement);
+        });
+
+        cartCount.textContent = cart.reduce((sum, item) => sum + item.quantity, 0);
+        cartTotal.textContent = `Rp ${total.toLocaleString()}`;
+    }
+
+    function addToCart(product) {
+        const quantityInput = document.getElementById(`quantity-${product.id_produk}`);
+        const quantity = parseInt(quantityInput.value);
+
+        const existingProductIndex = cart.findIndex(item => item.id_produk === product.id_produk);
+        
+        if (existingProductIndex > -1) {
+            const newQuantity = cart[existingProductIndex].quantity + quantity;
+            if (newQuantity <= product.stok) {
+                cart[existingProductIndex].quantity = newQuantity;
+            } else {
+                alert('Stok produk tidak mencukupi');
+                return;
+            }
+        } else {
+            if (quantity <= product.stok) {
+                cart.push({...product, quantity: quantity});
+            } else {
+                alert('Stok produk tidak mencukupi');
+                return;
+            }
+        }
+
+        updateCartUI();
+        quantityInput.value = 1;
+        alert('Produk berhasil ditambahkan ke keranjang');
+    }
+
+    function removeFromCart(index) {
+        cart.splice(index, 1);
+        updateCartUI();
+    }
+
+    function toggleCartModal() {
+        const cartModal = document.getElementById('cartModal');
+        cartModal.classList.toggle('hidden');
+        cartModal.classList.toggle('flex');
+    }
+
+    function checkout() {
+        if (cart.length === 0) {
+            alert('Keranjang masih kosong');
+            return;
+        }
+
+        const orderData = {
+            items: cart.map(item => ({
+                id_produk: item.id_produk,
+                quantity: item.quantity,
+                harga: item.harga
+            }))
+        };
+
+        fetch('order.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(orderData)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                alert('Pesanan berhasil dibuat!');
+                cart = [];
+                updateCartUI();
+                toggleCartModal();
+            } else {
+                alert('Gagal membuat pesanan: ' + result.message);
+            }
+        })
+        .catch(error => {
+            alert('Terjadi kesalahan saat membuat pesanan');
+            console.error('Error:', error);
+        });
+    }
+
+    // Quantity controls
+    function increaseQuantity(productId) {
+        const quantityInput = document.getElementById(`quantity-${productId}`);
+        const currentQuantity = parseInt(quantityInput.value);
+        const maxQuantity = parseInt(quantityInput.max);
+        
+        if (currentQuantity < maxQuantity) {
+            quantityInput.value = currentQuantity + 1;
+        }
+    }
+
+    function decreaseQuantity(productId) {
+        const quantityInput = document.getElementById(`quantity-${productId}`);
+        const currentQuantity = parseInt(quantityInput.value);
+        
+        if (currentQuantity > 1) {
+            quantityInput.value = currentQuantity - 1;
+        }
+    }
+
+    function validateQuantity(productId) {
+        const quantityInput = document.getElementById(`quantity-${productId}`);
+        let currentQuantity = parseInt(quantityInput.value);
+        const maxQuantity = parseInt(quantityInput.max);
+        
+        if (isNaN(currentQuantity) || currentQuantity < 1) {
+            currentQuantity = 1;
+        } else if (currentQuantity > maxQuantity) {
+            currentQuantity = maxQuantity;
+        }
+        
+        quantityInput.value = currentQuantity;
+    }
+
+    // Filter functionality
+    const productCards = document.querySelectorAll('.product-card');
+    
+    function filterProducts() {
+        const sellerFilter = document.getElementById('sellerFilter').value.toLowerCase();
+        const searchInput = document.getElementById('searchInput').value.toLowerCase();
+
+        productCards.forEach(card => {
+            const sellerName = card.getAttribute('data-seller').toLowerCase();
+            const productName = card.querySelector('.text-lg').textContent.toLowerCase();
+
+            const sellerMatch = sellerFilter === '' || sellerName === sellerFilter;
+            const searchMatch = productName.includes(searchInput) || sellerName.includes(searchInput);
+
+            card.style.display = (sellerMatch && searchMatch) ? 'block' : 'none';
+        });
+    }
+
+    document.getElementById('sellerFilter').addEventListener('change', filterProducts);
+    document.getElementById('searchInput').addEventListener('input', filterProducts);
+    document.getElementById('cartButton').addEventListener('click', toggleCartModal);
+
+    // Initialize cart UI
+    updateCartUI();
+    </script>
+</body>
+</html>
