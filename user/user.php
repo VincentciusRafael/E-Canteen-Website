@@ -174,7 +174,7 @@ function buildPaginationUrl($page) {
             <div class="flex flex-col items-center py-6 px-4">
                 <div class="flex flex-col items-center mb-6">
                     <img src="../images/WhatsApp Image 2025-01-04 at 10.08.50_8e6a12dc.jpg" alt="Logo" class="rounded-full mb-2" style="height: 100px;">
-                    <h1 class="text-xl font-semibold text-gray-700">Admin <?php echo htmlspecialchars($_SESSION['username'] ?? ''); ?></h1> 
+                    <h1 class="text-xl font-semibold text-gray-700">Admin</h1> 
                 </div><br>
 
                 <!-- Navigation -->

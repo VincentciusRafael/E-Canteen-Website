@@ -7,21 +7,63 @@ if(!isset($_SESSION['id_admin'])) {
     exit();
 }
 
-// Handle Top Up Process
+// Debug function
+function debug_to_console($data) {
+    echo "<script>console.log('Debug: " . json_encode($data) . "');</script>";
+}
+
+// Handle Top Up Process 
 if(isset($_POST['topup'])) {
     $id_user = $_POST['id_user'];
     $amount = $_POST['amount'];
     
-    // Insert into transaksi table
-    $query = "INSERT INTO top_up (id_user, saldo, total_harga, status) VALUES ($id_user, $amount, $amount, 'completed')";
+    if(!is_numeric($amount) || $amount <= 0) {
+        echo "<script>alert('Jumlah top up tidak valid!'); window.location='transaksi.php';</script>";
+        exit();
+    }
+
+    mysqli_autocommit($conn, FALSE);
+    $success = true;
+
+    // Insert into top_up table using prepared statement
+    $stmt = $conn->prepare("INSERT INTO top_up (id_user, saldo, total_harga, status) VALUES (?, ?, ?, 'completed')");
+    if($stmt) {
+        $stmt->bind_param("idd", $id_user, $amount, $amount);
+        if(!$stmt->execute()) {
+            $success = false;
+            debug_to_console("Error in top up insert: " . $stmt->error);
+        }
+        $stmt->close();
+    } else {
+        $success = false;
+        debug_to_console("Error in prepare top up: " . $conn->error);
+    }
     
-    if(mysqli_query($conn, $query)) {
-        // Update user balance
-        mysqli_query($conn, "UPDATE user SET saldo = saldo + $amount WHERE id_user = $id_user");
+    // Update user balance
+    if($success) {
+        $update_stmt = $conn->prepare("UPDATE user SET saldo = saldo + ? WHERE id_user = ?");
+        if($update_stmt) {
+            $update_stmt->bind_param("di", $amount, $id_user);
+            if(!$update_stmt->execute()) {
+                $success = false;
+                debug_to_console("Error in update: " . $update_stmt->error);
+            }
+            $update_stmt->close();
+        } else {
+            $success = false;
+            debug_to_console("Error in prepare update: " . $conn->error);
+        }
+    }
+
+    if($success) {
+        mysqli_commit($conn);
         echo "<script>alert('Top up berhasil!'); window.location='transaksi.php';</script>";
     } else {
-        echo "<script>alert('Error: " . mysqli_error($conn) . "'); window.location='transaksi.php';</script>";
+        mysqli_rollback($conn);
+        echo "<script>alert('Error dalam proses top up'); window.location='transaksi.php';</script>";
     }
+    
+    mysqli_autocommit($conn, TRUE);
 }
 
 // Handle Withdrawal Process
@@ -29,15 +71,75 @@ if(isset($_POST['withdraw'])) {
     $id_penjual = $_POST['id_penjual'];
     $amount = $_POST['amount'];
     
-    // Check seller's balance
-    $seller = mysqli_fetch_assoc(mysqli_query($conn, "SELECT saldo FROM penjual WHERE id_penjual = $id_penjual"));
+    if(!is_numeric($amount) || $amount <= 0) {
+        echo "<script>alert('Jumlah penarikan tidak valid!'); window.location='transaksi.php';</script>";
+        exit();
+    }
     
-    if($seller['saldo'] >= $amount) {
+    // Get current seller balance using prepared statement
+    $balance_stmt = $conn->prepare("SELECT saldo FROM penjual WHERE id_penjual = ?");
+    if(!$balance_stmt) {
+        echo "<script>alert('Error system!'); window.location='transaksi.php';</script>";
+        exit();
+    }
+    
+    $balance_stmt->bind_param("i", $id_penjual);
+    $balance_stmt->execute();
+    $result = $balance_stmt->get_result();
+    $seller = $result->fetch_assoc();
+    $balance_stmt->close();
+    
+    if($seller && $seller['saldo'] >= $amount) {
+        mysqli_autocommit($conn, FALSE);
+        $success = true;
+        
+        // Get the next available ID
+        $next_id_query = "SELECT COALESCE(MAX(id_withdrawal), 0) + 1 AS next_id FROM withdrawals";
+        $next_id_result = mysqli_query($conn, $next_id_query);
+        $next_id_row = mysqli_fetch_assoc($next_id_result);
+        $next_id = $next_id_row['next_id'];
+        
+        // Insert withdrawal record with explicit ID
+        $stmt = $conn->prepare("INSERT INTO withdrawals (id_withdrawal, id_penjual, saldo, status, tanggal_withdrawal, total_withdrawal) VALUES (?, ?, ?, 'completed', NOW(), ?)");
+        if($stmt) {
+            $stmt->bind_param("iidd", $next_id, $id_penjual, $amount, $amount);
+            if(!$stmt->execute()) {
+                $success = false;
+                debug_to_console("Error in withdrawal insert: " . $stmt->error);
+            }
+            $stmt->close();
+        } else {
+            $success = false;
+            debug_to_console("Error in prepare withdrawal: " . $conn->error);
+        }
+        
         // Update seller balance
-        mysqli_query($conn, "UPDATE penjual SET saldo = saldo - $amount WHERE id_penjual = $id_penjual");
-        echo "<script>alert('Penarikan berhasil!'); window.location='transaksi.php';</script>";
+        if($success) {
+            $update_stmt = $conn->prepare("UPDATE penjual SET saldo = saldo - ? WHERE id_penjual = ?");
+            if($update_stmt) {
+                $update_stmt->bind_param("di", $amount, $id_penjual);
+                if(!$update_stmt->execute()) {
+                    $success = false;
+                    debug_to_console("Error in update: " . $update_stmt->error);
+                }
+                $update_stmt->close();
+            } else {
+                $success = false;
+                debug_to_console("Error in prepare update: " . $conn->error);
+            }
+        }
+        
+        if($success) {
+            mysqli_commit($conn);
+            echo "<script>alert('Penarikan berhasil!'); window.location='transaksi.php';</script>";
+        } else {
+            mysqli_rollback($conn);
+            echo "<script>alert('Gagal melakukan penarikan: Database error'); window.location='transaksi.php';</script>";
+        }
+        
+        mysqli_autocommit($conn, TRUE);
     } else {
-        echo "<script>alert('Saldo tidak mencukupi!'); window.location='transaksi.php';</script>";
+        echo "<script>alert('Saldo tidak mencukupi atau penjual tidak ditemukan!'); window.location='transaksi.php';</script>";
     }
 }
 ?>
@@ -71,7 +173,7 @@ if(isset($_POST['withdraw'])) {
             <!-- Logo -->
             <div class="flex flex-col items-center mb-6">
                 <img src="../images/WhatsApp Image 2025-01-04 at 10.08.50_8e6a12dc.jpg" alt="Logo" class="rounded-full mb-2" style="height: 100px;">
-                <h1 class="text-xl font-semibold text-gray-700">Admin <?php echo htmlspecialchars($_SESSION['username'] ?? ''); ?></h1> 
+                <h1 class="text-xl font-semibold text-gray-700">Admin</h1> 
             </div><br>
 
             <!-- Navigation -->
@@ -142,10 +244,11 @@ if(isset($_POST['withdraw'])) {
                     <!-- Withdrawal Section -->
                     <div class="bg-white rounded-lg shadow-lg p-6 fade-in">
                         <h2 class="text-2xl font-bold mb-6 text-green-600">Penarikan Saldo Penjual</h2>
-                        <form method="POST" class="space-y-4">
+                        <form method="POST" class="space-y-4"> 
                             <div class="relative">
-                                <input type="text" class="search-input w-full p-2 border rounded-lg focus:ring-2 focus:ring-green-400" placeholder="Cari penjual..." data-target="sellerDropdown">
-                                <div class="custom-dropdown hidden absolute z-10 w-full bg-white border rounded-lg mt-1 max-h-60 overflow-y-auto" id="sellerDropdown">
+                                <label class="block text-gray-700 mb-2">Pilih Penjual</label>
+                                <input type="text" class="search-input w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400" placeholder="Cari penjual..." data-target="penjualDropdown">
+                                <div class="custom-dropdown hidden absolute z-10 w-full bg-white border rounded-lg mt-1 max-h-60 overflow-y-auto" id="penjualDropdown">
                                     <select name="id_penjual" class="hidden">
                                         <?php
                                         $sellers = mysqli_query($conn, "SELECT * FROM penjual");
@@ -158,7 +261,7 @@ if(isset($_POST['withdraw'])) {
                             </div>
                             <div>
                                 <label class="block text-gray-700 mb-2">Jumlah Penarikan</label>
-                                <input type="number" name="amount" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-green-400" required>
+                                <input type="number" name="amount" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-green-400" required min="1">
                             </div>
                             <button type="submit" name="withdraw" class="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition-colors">
                                 Proses Penarikan
@@ -473,6 +576,41 @@ if(isset($_POST['withdraw'])) {
                 printWindow.close();
             }, 500);
         }
+
+        function validateWithdrawalForm() {
+            const form = document.querySelector('form');
+            const selectedSeller = form.querySelector('select[name="id_penjual"]');
+            const amount = form.querySelector('input[name="amount"]').value;
+            
+            if (!selectedSeller.value) {
+                alert('Silakan pilih penjual terlebih dahulu!');
+                return false;
+            }
+            
+            const selectedOption = selectedSeller.options[selectedSeller.selectedIndex];
+            const currentBalance = parseFloat(selectedOption.dataset.balance);
+            
+            if (parseFloat(amount) > currentBalance) {
+                alert('Jumlah penarikan melebihi saldo yang tersedia!');
+                return false;
+            }
+            
+            if (parseFloat(amount) <= 0) {
+                alert('Jumlah penarikan harus lebih dari 0!');
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // Log form submission
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const formData = new FormData(this);
+            console.log('Form submitted with data:', {
+                id_penjual: formData.get('id_penjual'),
+                amount: formData.get('amount')
+            });
+        });
     </script>
 
     <style>
