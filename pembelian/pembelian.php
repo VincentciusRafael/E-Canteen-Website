@@ -190,280 +190,280 @@ $_SESSION['id_user'] = $user_data['id_user'];
 
     <script>
     // Initialize cart from localStorage or empty array if none exists
-let cart = JSON.parse(localStorage.getItem('cart')) || [];
+    let cart = JSON.parse(localStorage.getItem('cart')) || [];
 
-function updateCartUI() {
-    const cartItems = document.getElementById('cartItems');
-    const cartCount = document.getElementById('cartCount');
-    const cartTotal = document.getElementById('cartTotal');
-    
-    // Save cart to localStorage
-    localStorage.setItem('cart', JSON.stringify(cart));
-    
-    cartItems.innerHTML = '';
-    
-    let total = 0;
-    cart.forEach((item, index) => {
-        const itemTotal = item.harga * item.quantity;
-        total += itemTotal;
+    function updateCartUI() {
+        const cartItems = document.getElementById('cartItems');
+        const cartCount = document.getElementById('cartCount');
+        const cartTotal = document.getElementById('cartTotal');
         
-        const itemElement = document.createElement('div');
-        itemElement.className = 'flex justify-between items-center p-2 border-b';
-        itemElement.innerHTML = `
-            <div class="flex-1">
-                <div class="font-semibold">${item.nama_produk}</div>
-                <div class="text-sm text-gray-600">${item.quantity} x Rp ${item.harga.toLocaleString()}</div>
-            </div>
-            <div class="flex items-center">
-                <span class="font-semibold">Rp ${itemTotal.toLocaleString()}</span>
-                <button onclick="removeFromCart(${index})" class="ml-2 text-red-500">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        `;
-        cartItems.appendChild(itemElement);
-    });
-
-    cartCount.textContent = cart.reduce((sum, item) => sum + item.quantity, 0);
-    cartTotal.textContent = `Rp ${total.toLocaleString()}`;
-}
-
-function addToCart(product) {
-    const quantityInput = document.getElementById(`quantity-${product.id_produk}`);
-    const quantity = parseInt(quantityInput.value);
-
-    const existingProductIndex = cart.findIndex(item => item.id_produk === product.id_produk);
-    
-    if (existingProductIndex > -1) {
-        const newQuantity = cart[existingProductIndex].quantity + quantity;
-        if (newQuantity <= product.stok) {
-            cart[existingProductIndex].quantity = newQuantity;
-        } else {
-            alert('Stok produk tidak mencukupi');
-            return;
-        }
-    } else {
-        if (quantity <= product.stok) {
-            cart.push({...product, quantity: quantity});
-        } else {
-            alert('Stok produk tidak mencukupi');
-            return;
-        }
-    }
-
-    updateCartUI();
-    quantityInput.value = 1;
-    alert('Produk berhasil ditambahkan ke keranjang');
-}
-
-function removeFromCart(index) {
-    cart.splice(index, 1);
-    updateCartUI();
-}
-
-function toggleCartModal() {
-    const cartModal = document.getElementById('cartModal');
-    cartModal.classList.toggle('hidden');
-    cartModal.classList.toggle('flex');
-}
-
-function checkout() {
-    if (cart.length === 0) {
-        alert('Keranjang masih kosong');
-        return;
-    }
-
-    const orderNotes = document.getElementById('orderNotes').value;
-
-    const itemsBySeller = cart.reduce((acc, item) => {
-        const sellerId = item.id_penjual;
-        if (!acc[sellerId]) {
-            acc[sellerId] = [];
-        }
-        acc[sellerId].push(item);
-        return acc;
-    }, {});
-
-    const orderData = {
-        items: cart.map(item => ({
-            id_produk: item.id_produk,
-            quantity: item.quantity,
-            harga: item.harga,
-            id_penjual: item.id_penjual
-        })),
-        metode_pembayaran: 'Saldo',
-        catatan: orderNotes
-    };
-
-    const totalAmount = cart.reduce((sum, item) => sum + (item.harga * item.quantity), 0);
-
-    const confirmMessage = `Detail Pesanan:
-    Total Pembayaran: Rp ${totalAmount.toLocaleString()}
-    Catatan: ${orderNotes || '(Tidak ada catatan)'}
-
-    Lanjutkan pembelian?`;
-
-    if (!confirm(confirmMessage)) {
-        return;
-    }
-
-    fetch('order.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(orderData)
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            alert('Pesanan berhasil dibuat!');
-            // Clear cart from localStorage
-            localStorage.removeItem('cart');
-            cart = [];
-            updateCartUI();
-            toggleCartModal();
-            window.location.reload();
-        } else {
-            alert('Gagal membuat pesanan: ' + result.message);
-        }
-    })
-    .catch(error => {
-        alert('Terjadi kesalahan saat membuat pesanan');
-        console.error('Error:', error);
-    });
-}
-
-function toggleHistoryModal() {
-    const historyModal = document.getElementById('historyModal');
-    historyModal.classList.toggle('hidden');
-    historyModal.classList.toggle('flex');
-    
-    if (!historyModal.classList.contains('hidden')) {
-        loadPurchaseHistory();
-    }
-}
-
-function loadPurchaseHistory() {
-    fetch('history_pembelian.php')
-        .then(response => response.json())
-        .then(data => {
-            console.log('Data received:', data);
-            const historyContent = document.getElementById('historyContent');
-            historyContent.innerHTML = '';
+        // Save cart to localStorage
+        localStorage.setItem('cart', JSON.stringify(cart));
+        
+        cartItems.innerHTML = '';
+        
+        let total = 0;
+        cart.forEach((item, index) => {
+            const itemTotal = item.harga * item.quantity;
+            total += itemTotal;
             
-            if (data.length === 0) {
-                historyContent.innerHTML = '<p class="text-center text-gray-500">Belum ada riwayat pembelian</p>';
+            const itemElement = document.createElement('div');
+            itemElement.className = 'flex justify-between items-center p-2 border-b';
+            itemElement.innerHTML = `
+                <div class="flex-1">
+                    <div class="font-semibold">${item.nama_produk}</div>
+                    <div class="text-sm text-gray-600">${item.quantity} x Rp ${item.harga.toLocaleString()}</div>
+                </div>
+                <div class="flex items-center">
+                    <span class="font-semibold">Rp ${itemTotal.toLocaleString()}</span>
+                    <button onclick="removeFromCart(${index})" class="ml-2 text-red-500">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            cartItems.appendChild(itemElement);
+        });
+
+        cartCount.textContent = cart.reduce((sum, item) => sum + item.quantity, 0);
+        cartTotal.textContent = `Rp ${total.toLocaleString()}`;
+    }
+
+    function addToCart(product) {
+        const quantityInput = document.getElementById(`quantity-${product.id_produk}`);
+        const quantity = parseInt(quantityInput.value);
+
+        const existingProductIndex = cart.findIndex(item => item.id_produk === product.id_produk);
+        
+        if (existingProductIndex > -1) {
+            const newQuantity = cart[existingProductIndex].quantity + quantity;
+            if (newQuantity <= product.stok) {
+                cart[existingProductIndex].quantity = newQuantity;
+            } else {
+                alert('Stok produk tidak mencukupi');
                 return;
             }
+        } else {
+            if (quantity <= product.stok) {
+                cart.push({...product, quantity: quantity});
+            } else {
+                alert('Stok produk tidak mencukupi');
+                return;
+            }
+        }
 
-            data.forEach(order => {
-                const orderElement = document.createElement('div');
-                orderElement.className = 'bg-gray-50 rounded-lg p-4 mb-4';
-                
-                let itemsHtml = '';
-                if (Array.isArray(order.items)) {
-                    order.items.forEach(item => {
-                        itemsHtml += `
-                            <div class="flex justify-between items-center py-2">
-                                <span>${item.nama_produk} (${item.jumlah}x)</span>
-                                <span>Rp ${parseInt(item.harga_satuan).toLocaleString()}</span>
-                            </div>
-                        `;
-                    });
-                }
-                
-                orderElement.innerHTML = `
-                    <div class="flex justify-between items-center mb-2">
-                        <div>
-                            <span class="font-semibold">Pembelian #${order.id_pembelian}</span>
-                            <span class="text-sm text-gray-500 ml-2">${order.tanggal_pembelian}</span>
-                        </div>
-                        <span class="px-2 py-1 rounded ${order.status === 'Selesai' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
-                            ${order.status}
-                        </span>
-                    </div>
-                    <div class="border-t border-gray-200 mt-2 pt-2">
-                        ${itemsHtml}
-                    </div>
-                    <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-200">
-                        <span class="font-semibold">Total:</span>
-                        <span class="font-semibold">Rp ${parseInt(order.total_harga).toLocaleString()}</span>
-                    </div>
-                    ${order.catatan ? `<div class="mt-2 text-sm text-gray-600">Catatan: ${order.catatan}</div>` : ''}
-                `;
-                    
-                historyContent.appendChild(orderElement);
-            });
+        updateCartUI();
+        quantityInput.value = 1;
+        alert('Produk berhasil ditambahkan ke keranjang');
+    }
+
+    function removeFromCart(index) {
+        cart.splice(index, 1);
+        updateCartUI();
+    }
+
+    function toggleCartModal() {
+        const cartModal = document.getElementById('cartModal');
+        cartModal.classList.toggle('hidden');
+        cartModal.classList.toggle('flex');
+    }
+
+    function checkout() {
+        if (cart.length === 0) {
+            alert('Keranjang masih kosong');
+            return;
+        }
+
+        const orderNotes = document.getElementById('orderNotes').value;
+
+        const itemsBySeller = cart.reduce((acc, item) => {
+            const sellerId = item.id_penjual;
+            if (!acc[sellerId]) {
+                acc[sellerId] = [];
+            }
+            acc[sellerId].push(item);
+            return acc;
+        }, {});
+
+        const orderData = {
+            items: cart.map(item => ({
+                id_produk: item.id_produk,
+                quantity: item.quantity,
+                harga: item.harga,
+                id_penjual: item.id_penjual
+            })),
+            metode_pembayaran: 'Saldo',
+            catatan: orderNotes
+        };
+
+        const totalAmount = cart.reduce((sum, item) => sum + (item.harga * item.quantity), 0);
+
+        const confirmMessage = `Detail Pesanan:
+        Total Pembayaran: Rp ${totalAmount.toLocaleString()}
+        Catatan: ${orderNotes || '(Tidak ada catatan)'}
+
+        Lanjutkan pembelian?`;
+
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+
+        fetch('order.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(orderData)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                alert('Pesanan berhasil dibuat!');
+                // Clear cart from localStorage
+                localStorage.removeItem('cart');
+                cart = [];
+                updateCartUI();
+                toggleCartModal();
+                window.location.reload();
+            } else {
+                alert('Gagal membuat pesanan: ' + result.message);
+            }
         })
         .catch(error => {
+            alert('Terjadi kesalahan saat membuat pesanan');
             console.error('Error:', error);
-            const historyContent = document.getElementById('historyContent');
-            historyContent.innerHTML = '<p class="text-center text-red-500">Gagal memuat riwayat pembelian</p>';
         });
-}
-
-// Quantity controls
-function increaseQuantity(productId) {
-    const quantityInput = document.getElementById(`quantity-${productId}`);
-    const currentQuantity = parseInt(quantityInput.value);
-    const maxQuantity = parseInt(quantityInput.max);
-    
-    if (currentQuantity < maxQuantity) {
-        quantityInput.value = currentQuantity + 1;
     }
-}
 
-function decreaseQuantity(productId) {
-    const quantityInput = document.getElementById(`quantity-${productId}`);
-    const currentQuantity = parseInt(quantityInput.value);
-    
-    if (currentQuantity > 1) {
-        quantityInput.value = currentQuantity - 1;
+    function toggleHistoryModal() {
+        const historyModal = document.getElementById('historyModal');
+        historyModal.classList.toggle('hidden');
+        historyModal.classList.toggle('flex');
+        
+        if (!historyModal.classList.contains('hidden')) {
+            loadPurchaseHistory();
+        }
     }
-}
 
-function validateQuantity(productId) {
-    const quantityInput = document.getElementById(`quantity-${productId}`);
-    let currentQuantity = parseInt(quantityInput.value);
-    const maxQuantity = parseInt(quantityInput.max);
-    
-    if (isNaN(currentQuantity) || currentQuantity < 1) {
-        currentQuantity = 1;
-    } else if (currentQuantity > maxQuantity) {
-        currentQuantity = maxQuantity;
+    function loadPurchaseHistory() {
+        fetch('history_pembelian.php')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Data received:', data);
+                const historyContent = document.getElementById('historyContent');
+                historyContent.innerHTML = '';
+                
+                if (data.length === 0) {
+                    historyContent.innerHTML = '<p class="text-center text-gray-500">Belum ada riwayat pembelian</p>';
+                    return;
+                }
+
+                data.forEach(order => {
+                    const orderElement = document.createElement('div');
+                    orderElement.className = 'bg-gray-50 rounded-lg p-4 mb-4';
+                    
+                    let itemsHtml = '';
+                    if (Array.isArray(order.items)) {
+                        order.items.forEach(item => {
+                            itemsHtml += `
+                                <div class="flex justify-between items-center py-2">
+                                    <span>${item.nama_produk} (${item.jumlah}x)</span>
+                                    <span>Rp ${parseInt(item.harga_satuan).toLocaleString()}</span>
+                                </div>
+                            `;
+                        });
+                    }
+                    
+                    orderElement.innerHTML = `
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <span class="font-semibold">Pembelian #${order.id_pembelian}</span>
+                                <span class="text-sm text-gray-500 ml-2">${order.tanggal_pembelian}</span>
+                            </div>
+                            <span class="px-2 py-1 rounded ${order.status === 'Selesai' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                                ${order.status}
+                            </span>
+                        </div>
+                        <div class="border-t border-gray-200 mt-2 pt-2">
+                            ${itemsHtml}
+                        </div>
+                        <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-200">
+                            <span class="font-semibold">Total:</span>
+                            <span class="font-semibold">Rp ${parseInt(order.total_harga).toLocaleString()}</span>
+                        </div>
+                        ${order.catatan ? `<div class="mt-2 text-sm text-gray-600">Catatan: ${order.catatan}</div>` : ''}
+                    `;
+                        
+                    historyContent.appendChild(orderElement);
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const historyContent = document.getElementById('historyContent');
+                historyContent.innerHTML = '<p class="text-center text-red-500">Gagal memuat riwayat pembelian</p>';
+            });
     }
-    
-    quantityInput.value = currentQuantity;
-}
 
-// Filter functionality
-const productCards = document.querySelectorAll('.product-card');
+    // Quantity controls
+    function increaseQuantity(productId) {
+        const quantityInput = document.getElementById(`quantity-${productId}`);
+        const currentQuantity = parseInt(quantityInput.value);
+        const maxQuantity = parseInt(quantityInput.max);
+        
+        if (currentQuantity < maxQuantity) {
+            quantityInput.value = currentQuantity + 1;
+        }
+    }
 
-function filterProducts() {
-    const sellerFilter = document.getElementById('sellerFilter').value.toLowerCase();
-    const searchInput = document.getElementById('searchInput').value.toLowerCase();
+    function decreaseQuantity(productId) {
+        const quantityInput = document.getElementById(`quantity-${productId}`);
+        const currentQuantity = parseInt(quantityInput.value);
+        
+        if (currentQuantity > 1) {
+            quantityInput.value = currentQuantity - 1;
+        }
+    }
 
-    productCards.forEach(card => {
-        const sellerName = card.getAttribute('data-seller').toLowerCase();
-        const productName = card.querySelector('.text-lg').textContent.toLowerCase();
+    function validateQuantity(productId) {
+        const quantityInput = document.getElementById(`quantity-${productId}`);
+        let currentQuantity = parseInt(quantityInput.value);
+        const maxQuantity = parseInt(quantityInput.max);
+        
+        if (isNaN(currentQuantity) || currentQuantity < 1) {
+            currentQuantity = 1;
+        } else if (currentQuantity > maxQuantity) {
+            currentQuantity = maxQuantity;
+        }
+        
+        quantityInput.value = currentQuantity;
+    }
 
-        const sellerMatch = sellerFilter === '' || sellerName === sellerFilter;
-        const searchMatch = productName.includes(searchInput) || sellerName.includes(searchInput);
+    // Filter functionality
+    const productCards = document.querySelectorAll('.product-card');
 
-        card.style.display = (sellerMatch && searchMatch) ? 'block' : 'none';
+    function filterProducts() {
+        const sellerFilter = document.getElementById('sellerFilter').value.toLowerCase();
+        const searchInput = document.getElementById('searchInput').value.toLowerCase();
+
+        productCards.forEach(card => {
+            const sellerName = card.getAttribute('data-seller').toLowerCase();
+            const productName = card.querySelector('.text-lg').textContent.toLowerCase();
+
+            const sellerMatch = sellerFilter === '' || sellerName === sellerFilter;
+            const searchMatch = productName.includes(searchInput) || sellerName.includes(searchInput);
+
+            card.style.display = (sellerMatch && searchMatch) ? 'block' : 'none';
+        });
+    }
+
+    // Event listeners
+    document.getElementById('sellerFilter').addEventListener('change', filterProducts);
+    document.getElementById('searchInput').addEventListener('input', filterProducts);
+    document.getElementById('cartButton').addEventListener('click', toggleCartModal);
+
+    // Initialize cart UI when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        updateCartUI();
     });
-}
-
-// Event listeners
-document.getElementById('sellerFilter').addEventListener('change', filterProducts);
-document.getElementById('searchInput').addEventListener('input', filterProducts);
-document.getElementById('cartButton').addEventListener('click', toggleCartModal);
-
-// Initialize cart UI when page loads
-document.addEventListener('DOMContentLoaded', () => {
-    updateCartUI();
-});
     </script>
 </body>
 </html>
