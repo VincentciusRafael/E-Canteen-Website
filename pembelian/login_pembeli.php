@@ -83,7 +83,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             </button>
         </form>
 
-        <button onclick="history.back()" 
+        <button onclick="window.location.href='../dashboard/dashboard.php'" 
             class="mt-4 w-full bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600 transition">
             Kembali Ke Admin
         </button>
