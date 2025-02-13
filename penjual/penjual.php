@@ -7,7 +7,7 @@ if(!isset($_SESSION['id_admin'])) {
     exit();
 }
 
-// Set timezone PHP
+// Set timezone PHP 
 date_default_timezone_set('Asia/Jakarta');
 
 // Logika untuk menghapus penjual

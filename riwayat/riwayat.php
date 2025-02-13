@@ -150,7 +150,7 @@ $result = mysqli_query($conn, $query);
                                 </tr>
                             </thead>
                             <tbody>
-                            <?php
+                            <?php 
                             while($row = mysqli_fetch_array($result)) {
                                 $statusClass = $row['status'] == 'completed' ? 'text-green-600' : 
                                              ($row['status'] == 'failed' ? 'text-red-600' : 'text-yellow-600');

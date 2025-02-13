@@ -3,7 +3,7 @@ session_start();
 if(!isset($_SESSION['id_admin'])) {
     header("Location: ../login.php");
     exit();
-}
+} 
 include '../config.php';
 ?>
 <!DOCTYPE html>
@@ -149,7 +149,7 @@ include '../config.php';
                         <h6 class="text-xl font-bold text-blue-500">History Pembelian Hari Ini</h6>
                         <div class="flex space-x-2">
                             <a href="../pembelian/pembelian.php" class="text-sm px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition duration-200">Lihat Pembelian</a>
-                            <a href="riwayat.php" class="text-sm px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition duration-200">Lihat Semua</a>
+                            <a href="../riwayat/riwayat.php" class="text-sm px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition duration-200">Lihat Semua</a>
                         </div>
                     </div>
                     <div class="p-4">

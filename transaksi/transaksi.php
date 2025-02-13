@@ -18,7 +18,7 @@ if(isset($_POST['topup'])) {
     $amount = $_POST['amount'];
     
     if(!is_numeric($amount) || $amount <= 0) {
-        echo "<script>alert('Jumlah top up tidak valid!'); window.location='transaksi.php';</script>";
+        echo "<script>showErrorModal('Jumlah top up tidak valid!'); window.location='transaksi.php';</script>";
         exit();
     }
 
@@ -57,10 +57,10 @@ if(isset($_POST['topup'])) {
 
     if($success) {
         mysqli_commit($conn);
-        echo "<script>alert('Top up berhasil!'); window.location='transaksi.php';</script>";
+        echo "<script>showSuccessModal('Top up berhasil!'); window.location='transaksi.php';</script>";
     } else {
         mysqli_rollback($conn);
-        echo "<script>alert('Error dalam proses top up'); window.location='transaksi.php';</script>";
+        echo "<script>showErrorModal('Error dalam proses top up'); window.location='transaksi.php';</script>";
     }
     
     mysqli_autocommit($conn, TRUE);
@@ -72,14 +72,14 @@ if(isset($_POST['withdraw'])) {
     $amount = $_POST['amount'];
     
     if(!is_numeric($amount) || $amount <= 0) {
-        echo "<script>alert('Jumlah penarikan tidak valid!'); window.location='transaksi.php';</script>";
+        echo "<script>showErrorModal('Jumlah penarikan tidak valid!'); window.location='transaksi.php';</script>";
         exit();
     }
     
     // Get current seller balance using prepared statement
     $balance_stmt = $conn->prepare("SELECT saldo FROM penjual WHERE id_penjual = ?");
     if(!$balance_stmt) {
-        echo "<script>alert('Error system!'); window.location='transaksi.php';</script>";
+        echo "<script>showErrorModal('Error system!'); window.location='transaksi.php';</script>";
         exit();
     }
     
@@ -131,15 +131,15 @@ if(isset($_POST['withdraw'])) {
         
         if($success) {
             mysqli_commit($conn);
-            echo "<script>alert('Penarikan berhasil!'); window.location='transaksi.php';</script>";
+            echo "<script>showSuccessModal('Penarikan berhasil!'); window.location='transaksi.php';</script>";
         } else {
             mysqli_rollback($conn);
-            echo "<script>alert('Gagal melakukan penarikan: Database error'); window.location='transaksi.php';</script>";
+            echo "<script>showErrorModal('Gagal melakukan penarikan: Database error'); window.location='transaksi.php';</script>";
         }
         
         mysqli_autocommit($conn, TRUE);
     } else {
-        echo "<script>alert('Saldo tidak mencukupi atau penjual tidak ditemukan!'); window.location='transaksi.php';</script>";
+        echo "<script>showErrorModal('Saldo tidak mencukupi atau penjual tidak ditemukan!'); window.location='transaksi.php';</script>";
     }
 }
 ?>
@@ -270,6 +270,56 @@ if(isset($_POST['withdraw'])) {
                     </div>
                 </div>
 
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Modal -->
+    <div id="transactionModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-lg p-6 w-96 receipt">
+            <div id="transactionContent" class="text-center space-y-4">
+                <h2 class="text-2xl font-bold mb-4">E-Canteen</h2>
+                <p class="text-gray-600 mb-4">Bukti Transaksi</p>
+                
+                <div class="border-t border-b py-4 my-4">
+                    <div class="flex justify-between mb-2">
+                        <span>No. Transaksi:</span>
+                        <span id="transactionId"></span>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span>Tanggal:</span>
+                        <span id="transactionDate"></span>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span>Tipe:</span>
+                        <span id="transactionType"></span>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span id="personLabel"></span>
+                        <span id="personName"></span>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span>Jumlah:</span>
+                        <span id="transactionAmount" class="font-bold"></span>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span>Status:</span>
+                        <span class="text-green-600">Berhasil</span>
+                    </div>
+                </div>
+                
+                <p class="text-sm text-gray-600">
+                    Terima kasih telah menggunakan layanan kami
+                </p>
+            </div>
+            
+            <div class="mt-6 flex justify-center space-x-4">
+                <button onclick="printTransactionReceipt()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
+                    <i class="fas fa-print mr-1"></i> Cetak
+                </button>
+                <button onclick="closeTransactionModal()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors">
+                    <i class="fas fa-times mr-1"></i> Tutup
+                </button>
             </div>
         </div>
     </div>
@@ -611,6 +661,50 @@ if(isset($_POST['withdraw'])) {
                 amount: formData.get('amount')
             });
         });
+
+        function showSuccessModal(message) {
+            const modal = document.getElementById('receiptModal');
+            const content = document.getElementById('receiptContent');
+            
+            content.innerHTML = `
+                <div class="text-2xl font-bold mb-4">E-Canteen</div>
+                <div class="text-sm text-gray-600 mb-4">${message}</div>
+                <div class="border-t border-b py-4 my-4">
+                    <div class="flex justify-between mb-2">
+                        <span>Status:</span>
+                        <span class="text-green-600">Berhasil</span>
+                    </div>
+                </div>
+                <div class="text-sm text-gray-600 mt-4">
+                    Terima kasih telah menggunakan layanan kami
+                </div>
+            `;
+            
+            modal.classList.remove('hidden');
+        }
+
+        function showErrorModal(message) {
+            const modal = document.getElementById('receiptModal');
+            const content = document.getElementById('receiptContent');
+            
+            content.innerHTML = `
+                <div class="text-2xl font-bold mb-4">E-Canteen</div>
+                <div class="text-sm text-gray-600 mb-4">${message}</div>
+                <div class="border-t border-b py-4 my-4">
+                    <div class="flex justify-between mb-2">
+                        <span>Status:</span>
+                        <span class="text-red-600">Gagal</span>
+                    </div>
+                </div>
+                <div class="text-sm text-gray-600 mt-4">
+                    Silakan coba lagi atau hubungi administrator.
+                </div>
+            `;
+            
+            modal.classList.remove('hidden');
+        }
+
+        
     </script>
 
     <style>
