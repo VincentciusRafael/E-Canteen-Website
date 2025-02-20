@@ -21,7 +21,7 @@ $total_halaman = ceil($total_data / $batas);
 $query = "SELECT t.*, u.nama_user 
           FROM top_up t
           JOIN user u ON t.id_user = u.id_user
-          ORDER BY t.tanggal_transaksi DESC
+          ORDER BY t.tanggal_transaksi DESC, t.id_topup DESC
           LIMIT $mulai, $batas";
 
 $result = mysqli_query($conn, $query);
@@ -242,14 +242,18 @@ $result = mysqli_query($conn, $query);
     </div>
 
     <script>
+        // Remove the duplicate printReceipt function and keep one version
         function printReceipt(transactionId, userName, amount, transactionDate) {
             const modal = document.getElementById('receiptModal');
             const content = document.getElementById('receiptContent');
-            const formattedAmount = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(amount);
+            const formattedAmount = new Intl.NumberFormat('id-ID', { 
+                style: 'currency', 
+                currency: 'IDR' 
+            }).format(amount);
             const date = new Date(transactionDate);
             
             content.innerHTML = `
-                <div class="text-left" style="font-family: 'Courier New', monospace;">
+                <div class="text-left print-content" style="font-family: 'Courier New', monospace;">
                     <div class="text-center mb-4">
                         <div class="text-2xl font-bold">E-CANTEEN</div>
                         <div class="text-sm">Kantin Digital SMKN 10 Surabaya</div>
@@ -259,7 +263,7 @@ $result = mysqli_query($conn, $query);
                     </div>
 
                     <div class="mb-4 text-sm">
-                        <div>No. Transaksi: #${String(transactionId).padStart(6, '0')}</div>
+                        <div>No. Transaksi: ${transactionId}</div>
                         <div>Tanggal: ${date.toLocaleString('id-ID')}</div>
                         <div>Kasir: ADMIN</div>
                         <div>User: ${userName}</div>
@@ -295,61 +299,56 @@ $result = mysqli_query($conn, $query);
             modal.classList.remove('hidden');
         }
 
-        function closeReceiptModal() {
-            document.getElementById('receiptModal').classList.add('hidden');
+        // Add the missing printReceiptContent function
+        function printReceiptContent() {
+            const contentToPrint = document.querySelector('.print-content').innerHTML;
+            const printWindow = window.open('', '_blank');
+            
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Print Receipt</title>
+                    <style>
+                        body {
+                            font-family: 'Courier New', monospace;
+                            padding: 20px;
+                        }
+                        .flex {
+                            display: flex;
+                            justify-content: space-between;
+                        }
+                        .text-center { text-align: center; }
+                        .text-left { text-align: left; }
+                        .mb-4 { margin-bottom: 1rem; }
+                        .mt-4 { margin-top: 1rem; }
+                        .text-2xl { font-size: 1.5rem; }
+                        .text-sm { font-size: 0.875rem; }
+                        .text-xs { font-size: 0.75rem; }
+                        .font-bold { font-weight: bold; }
+                        @media print {
+                            @page { margin: 0; }
+                            body { margin: 1cm; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${contentToPrint}
+                </body>
+                </html>
+            `);
+            
+            printWindow.document.close();
+            printWindow.focus();
+            
+            // Add a small delay to ensure content is loaded before printing
+            setTimeout(() => {
+                printWindow.print();
+                printWindow.close();
+            }, 250);
         }
 
-        function printReceipt(transactionId, name, amount, transactionDate, transType) {
-            const modal = document.getElementById('receiptModal');
-            const content = document.getElementById('receiptContent');
-            const formattedAmount = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(amount);
-            const date = new Date(transactionDate);
-            
-            content.innerHTML = `
-                <div class="text-left" style="font-family: 'Courier New', monospace;">
-                    <div class="text-center mb-4">
-                        <div class="text-2xl font-bold">E-CANTEEN</div>
-                        <div class="text-sm">Kantin Digital SMKN 10 Surabaya</div>
-                        <div class="text-sm">Jl. Keputih Tegal No.54</div>
-                        <div class="text-sm">Surabaya, Jawa Timur</div>
-                        <div class="text-xs">================================</div>
-                    </div>
-
-                    <div class="mb-4 text-sm">
-                        <div>No. Transaksi: ${transactionId}</div>
-                        <div>Tanggal: ${date.toLocaleString('id-ID')}</div>
-                        <div>Kasir: ADMIN</div>
-                        <div>${transType == 'Top Up' ? 'User' : 'Penjual'}: ${name}</div>
-                    </div>
-
-                    <div class="text-xs">--------------------------------</div>
-                    
-                    <div class="mb-4">
-                        <div class="flex justify-between">
-                            <span>${transType.toUpperCase()}</span>
-                            <span>${formattedAmount}</span>
-                        </div>
-                    </div>
-
-                    <div class="text-xs">--------------------------------</div>
-                    
-                    <div class="mb-4">
-                        <div class="flex justify-between font-bold">
-                            <span>TOTAL</span>
-                            <span>${formattedAmount}</span>
-                        </div>
-                    </div>
-
-                    <div class="text-center mt-4">
-                        <div class="text-sm">Terima Kasih</div>
-                        <div class="text-sm">Atas Kunjungan Anda</div>
-                        <div class="text-xs mt-2">================================</div>
-                        <div class="text-xs">${new Date().toLocaleString('id-ID')}</div>
-                    </div>
-                </div>
-            `;
-            
-            modal.classList.remove('hidden');
+        function closeReceiptModal() {
+            document.getElementById('receiptModal').classList.add('hidden');
         }
 
         // Search and filter functionality
