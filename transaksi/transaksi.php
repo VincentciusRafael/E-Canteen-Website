@@ -27,28 +27,39 @@ if(isset($_POST['topup'])) {
 }
 
 // Handle Withdrawal Process
-// Modified withdrawal code
 if(isset($_POST['withdraw'])) {
     $id_penjual = $_POST['id_penjual'];
     $amount = $_POST['amount'];
-    
+
     // Check seller's balance
     $seller = mysqli_fetch_assoc(mysqli_query($conn, "SELECT saldo FROM penjual WHERE id_penjual = $id_penjual"));
-    
+
     if($seller['saldo'] >= $amount) {
-        // Update seller balance
-        if(mysqli_query($conn, "UPDATE penjual SET saldo = saldo - $amount WHERE id_penjual = $id_penjual")) {
+        mysqli_begin_transaction($conn); // Mulai transaksi
+        try {
+            // Update saldo penjual
+            mysqli_query($conn, "UPDATE penjual SET saldo = saldo - $amount WHERE id_penjual = $id_penjual");
+
+            // Catat ke tabel withdrawals dengan status 'pending'
+            mysqli_query($conn, "INSERT INTO withdrawals (id_penjual, saldo, total_withdrawal, status) 
+VALUES ($id_penjual, $amount, $amount, 'pending')");
+
+            // Update status menjadi 'completed' setelah penarikan berhasil diproses
+            $id_withdrawal = mysqli_insert_id($conn);
+            mysqli_query($conn, "UPDATE withdrawals SET status = 'completed' WHERE id_withdrawal = $id_withdrawal");
+
+            mysqli_commit($conn); // Commit jika semua query sukses
             echo json_encode(['success' => true, 'message' => 'Penarikan berhasil']);
-            exit();
+        } catch (Exception $e) {
+            mysqli_rollback($conn); // Rollback jika ada error
+            echo json_encode(['success' => false, 'message' => 'Gagal memproses penarikan: ' . $e->getMessage()]);
         }
     } else {
         echo json_encode(['success' => false, 'message' => 'Saldo tidak mencukupi']);
-        exit();
     }
-    
-    echo json_encode(['success' => false, 'message' => 'Error: ' . mysqli_error($conn)]);
     exit();
 }
+
 ?>
 
 <!DOCTYPE html>
