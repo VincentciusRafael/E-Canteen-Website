@@ -11,9 +11,9 @@ include '../config.php';
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>Dashboard - E-Canteen</title>
-    <link rel="icon" href="images/WhatsApp Image 2025-01-04 at 10.08.50_8e6a12dc.jpg">
+    <link rel="icon" href="../images/WhatsApp Image 2025-01-04 at 10.08.50_8e6a12dc.jpg">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <style>
@@ -40,6 +40,18 @@ include '../config.php';
             overflow-y: auto;
             max-height: 20rem;
         }
+
+        @media screen and (max-width: 1024px) {
+            .grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media screen and (max-width: 640px) {
+            .grid {
+                grid-template-columns: repeat(1, 1fr);
+            }
+        }
     </style>
 </head>
 
@@ -48,7 +60,7 @@ include '../config.php';
         <!-- Sidebar -->
         <div class="w-1/6 bg-blue-200 h-screen flex flex-col items-center py-6 px-4">
             <div class="flex flex-col items-center mb-6">
-                <img src="../images/WhatsApp Image 2025-01-04 at 10.08.50_8e6a12dc.jpg" alt="Logo" class="rounded-full mb-2" style="height: 100px;">
+                <img src="../images/WhatsApp Image 2025-01-04 at 10.08.50_8e6a12dc.jpg" alt="Logo" class="rounded-full w-full h-auto" mb-2" style="height: 100px;">
                 <h1 class="text-xl font-semibold text-gray-700">Admin</h1>
             </div><br>
 
@@ -107,7 +119,7 @@ include '../config.php';
                                 <p class="text-xl font-bold text-gray-800 mt-2"><?= number_format($data['total']); ?></p>
                             </div>
                             <i class="text-3xl text-gray-700 rounded-full">
-                                <img src="<?= $section[2]; ?>" style="height: 70px;">
+                                <img src="<?= $section[2]; ?>" style="height: 70px;" class="w-full h-auto">
                             </i>
                         </div>
                     <?php } ?>
